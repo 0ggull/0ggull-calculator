@@ -77,7 +77,7 @@ export default function ReceiptModal({ open, onClose, title, children, footerMes
           </p>
 
           <p className="text-center text-[10px] text-gray-300 dark:text-gray-600 mt-4">
-            0ggull.com
+            0GGULL
           </p>
         </div>
 
