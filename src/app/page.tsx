@@ -22,8 +22,8 @@ const CALCULATORS = [
     icon: <Car className="w-7 h-7" />,
     emoji: "🚗",
     title: "자동차 vs 대중교통",
-    description: "차량 소유 총비용 vs 택시+대중교통+쏘카 현실 대안 비교",
-    highlight: "감가+유지비 월 80~150만원",
+    description: "차량 소유 총비용(할부 이자 포함) vs 택시+대중교통+쏘카 + km당 비교",
+    highlight: "감가+유지 월 50~120만원",
     color: "from-sky-500 to-blue-500",
     bgLight: "bg-sky-50",
     bgDark: "dark:bg-sky-950/20",
@@ -34,7 +34,7 @@ const CALCULATORS = [
     icon: <Home className="w-7 h-7" />,
     emoji: "🏠",
     title: "아파트 매도 손익분기점",
-    description: "취득세·이자·복비·양도세 빼고 진짜 본전인 매도가 계산",
+    description: "취득세·이자·복비·양도세 빼고 진짜 본전인 매도가 + 주거비 절약 반영",
     highlight: "산 값 +3~15% 올라야 본전",
     color: "from-emerald-500 to-teal-500",
     bgLight: "bg-emerald-50",
@@ -46,8 +46,8 @@ const CALCULATORS = [
     icon: <Baby className="w-7 h-7" />,
     emoji: "👶",
     title: "자녀 22년 양육비",
-    description: "출산~대학졸업 연령별 양육비와 사교육 적자 구간 시각화",
-    highlight: "평균 3~4억원 (대치동형 6억+)",
+    description: "출산~독립 연령별 양육비 + 성별(군대) + 지역 + 사교육 성향 시뮬레이션",
+    highlight: "남아 26세/여아 22세 독립 기준",
     color: "from-purple-500 to-violet-500",
     bgLight: "bg-purple-50",
     bgDark: "dark:bg-purple-950/20",
@@ -123,20 +123,12 @@ export default function LandingPage() {
           <p className="text-sm text-gray-400 dark:text-gray-500">
             "감정으로 결정하되, 숫자는 알고 결정하자"
           </p>
-          <div className="flex items-center justify-center gap-4 text-xs text-gray-400">
-            <span>2026년 기준 데이터</span>
-            <span>·</span>
-            <span>무료 · 회원가입 없음</span>
-            <span>·</span>
-            <span>개인정보 수집 없음</span>
-          </div>
         </section>
 
         {/* Disclaimer */}
         <div className="text-center text-[11px] text-gray-400 dark:text-gray-600 leading-relaxed px-4 py-4 border-t border-gray-100 dark:border-gray-800/50">
-          본 사이트의 모든 계산은 2026년 기준 평균값·공식 참고용 세율을 사용한 시뮬레이션이며,
-          법률·정책·시장 상황은 수시로 변경됩니다.<br />
-          실제 의사결정 시 반드시 전문가(세무사·재무설계사·수의사 등)와 상담하세요.
+          본 사이트의 모든 계산은 참고용 시뮬레이션이며, 법률·정책·시장 상황은 수시로 변경됩니다.<br />
+          정확한 판단이 필요하시면 반드시 전문가(세무사·재무설계사·수의사 등)와 상담하세요.
         </div>
       </main>
     </div>
