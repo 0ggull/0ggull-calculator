@@ -23,7 +23,7 @@ export default function TabSelector({ tabs, active, onChange }: TabSelectorProps
           className={`shrink-0 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 border
             ${
               active === tab.key
-                ? "bg-brand-50 dark:bg-brand-950 border-brand-300 dark:border-brand-700 text-brand-700 dark:text-brand-300 shadow-sm"
+                ? "bg-brand-50 dark:bg-brand-900/40 border-brand-300 dark:border-brand-600 text-brand-700 dark:text-brand-200 shadow-sm"
                 : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-700"
             }`}
         >

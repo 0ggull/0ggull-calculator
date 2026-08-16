@@ -17,7 +17,6 @@ import { formatManwon, SP500_RATE, NASDAQ_RATE, INFLATION_RATE } from "@/lib/fin
 
 // ─── 타입 & 상수 ─────────────────────────────────────────
 type PetType = "small_dog" | "medium_dog" | "large_dog" | "cat";
-type FoodGrade = "budget" | "standard" | "premium";
 
 interface PetPreset {
   lifespan: number;
@@ -46,12 +45,6 @@ const PRESETS: Record<PetType, PetPreset> = {
   large_dog: { lifespan: 12, initialVaccination: 50, neutering: 65, initialSupplies: 50, monthlyFood: 18, monthlyParasite: 4, monthlyGrooming: 12, monthlySupplies: 6, monthlyInsurance: 8.5, annualVetAfter8: 250, funeralCost: 70 },
   cat: { lifespan: 15, initialVaccination: 30, neutering: 25, initialSupplies: 45, monthlyFood: 6, monthlyParasite: 1.5, monthlyGrooming: 0, monthlySupplies: 4.5, monthlyInsurance: 4, annualVetAfter8: 120, funeralCost: 40 },
 };
-
-const FOOD_GRADES: { key: FoodGrade; label: string; mult: number }[] = [
-  { key: "budget", label: "하급 (50%)", mult: 0.5 },
-  { key: "standard", label: "중급 (100%)", mult: 1.0 },
-  { key: "premium", label: "고급 (180%)", mult: 1.8 },
-];
 
 interface ExtraOpt {
   id: string;
@@ -115,7 +108,6 @@ function calculate(preset: PetPreset, foodMult: number, enabledExtras: string[],
 // ─── 컴포넌트 ───────────────────────────────────────────
 export default function PetCalculator() {
   const [petType, setPetType] = useState<PetType>("small_dog");
-  const [foodGrade, setFoodGrade] = useState<FoodGrade>("standard");
   const [enabledExtras, setEnabledExtras] = useState<string[]>(["patella"]);
   const [showReceipt, setShowReceipt] = useState(false);
 
@@ -132,8 +124,7 @@ export default function PetCalculator() {
     setEnabledExtras(defaultExtras);
   };
 
-  const foodMult = FOOD_GRADES.find((f) => f.key === foodGrade)!.mult;
-  const result = useMemo(() => calculate(custom, foodMult, enabledExtras, petType), [custom, foodMult, enabledExtras, petType]);
+  const result = useMemo(() => calculate(custom, 1.0, enabledExtras, petType), [custom, enabledExtras, petType]);
 
   const chartData = result.yearly.map((y) => ({
     name: `${y.age}세`,
@@ -163,24 +154,12 @@ export default function PetCalculator() {
             💰 상세 비용 직접 수정 (고급 설정)
           </summary>
           <div className="px-5 pb-5 border-t border-gray-100 dark:border-gray-800 pt-4 space-y-4">
-            {/* 사료 등급 */}
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">사료 등급</p>
-              <div className="flex gap-2">
-                {FOOD_GRADES.map((g) => (
-                  <button key={g.key} onClick={() => setFoodGrade(g.key)}
-                    className={`flex-1 py-2 rounded-xl text-xs font-medium border transition-all ${foodGrade === g.key ? "bg-brand-50 dark:bg-brand-950 border-brand-300 dark:border-brand-700 text-brand-700 dark:text-brand-300" : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400"}`}>
-                    {g.label}
-                  </button>
-                ))}
-              </div>
-            </div>
             {/* 개별 비용 */}
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             <NumberInput label="초기 접종비" value={custom.initialVaccination} onChange={(v) => setCustom({ ...custom, initialVaccination: v })} />
             <NumberInput label="중성화 비용" value={custom.neutering} onChange={(v) => setCustom({ ...custom, neutering: v })} />
             <NumberInput label="초기 용품비" value={custom.initialSupplies} onChange={(v) => setCustom({ ...custom, initialSupplies: v })} />
-            <NumberInput label="월 사료비 (중급)" value={custom.monthlyFood} onChange={(v) => setCustom({ ...custom, monthlyFood: v })} />
+            <NumberInput label="월 사료비" value={custom.monthlyFood} onChange={(v) => setCustom({ ...custom, monthlyFood: v })} />
             <NumberInput label="월 기생충약" value={custom.monthlyParasite} onChange={(v) => setCustom({ ...custom, monthlyParasite: v })} step={0.5} />
             <NumberInput label="월 미용비" value={custom.monthlyGrooming} onChange={(v) => setCustom({ ...custom, monthlyGrooming: v })} />
             <NumberInput label="월 소모품" value={custom.monthlySupplies} onChange={(v) => setCustom({ ...custom, monthlySupplies: v })} />
@@ -295,7 +274,7 @@ export default function PetCalculator() {
         >
           <div className="space-y-2">
             <div className="flex justify-between"><span>초기 비용</span><span>{formatManwon(custom.initialVaccination + custom.neutering + custom.initialSupplies)}</span></div>
-            <div className="flex justify-between"><span>월 고정 지출</span><span>{Math.round(custom.monthlyFood * foodMult + custom.monthlyParasite + custom.monthlyGrooming + custom.monthlySupplies + custom.monthlyInsurance)}만원/월</span></div>
+            <div className="flex justify-between"><span>월 고정 지출</span><span>{Math.round(custom.monthlyFood + custom.monthlyParasite + custom.monthlyGrooming + custom.monthlySupplies + custom.monthlyInsurance)}만원/월</span></div>
             <div className="flex justify-between"><span>8세+ 연간 병원비</span><span>{custom.annualVetAfter8}만원/년</span></div>
             <div className="flex justify-between"><span>장례비</span><span>{custom.funeralCost}만원</span></div>
             <div className="border-t border-dashed border-gray-300 dark:border-gray-700 pt-2 mt-2">
