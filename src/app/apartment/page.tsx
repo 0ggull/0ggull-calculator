@@ -162,14 +162,22 @@ function calculate(
   const opportunityCost = Math.round(equity * (Math.pow(1 + DEPOSIT_RATE, holdYears) - 1));
 
   // BEP 계산 (반복법 - 매도가를 올려가며 순이익 0이 되는 점 탐색)
-  let bepSellPrice = buyPrice;
-  for (let i = 0; i < 200; i++) {
-    const sellBroker = calcBrokerFee(bepSellPrice);
-    const cgt = calcCapitalGainsTax(buyPrice, bepSellPrice, holdYears, housing, interiorCost);
+  // 먼저 대략적인 매몰비용 합산으로 초기 추정
+  const roughSunk = acquisitionTax + legalFee + buyBroker + totalInterest + totalPropertyTax + interiorCost;
+  let bepSellPrice = buyPrice + roughSunk; // 매몰비용만큼 더한 값에서 시작
+
+  // 이분법으로 정확한 BEP 찾기
+  let lo = buyPrice;
+  let hi = buyPrice + roughSunk * 3; // 넉넉히 3배까지
+  for (let i = 0; i < 100; i++) {
+    const mid = Math.round((lo + hi) / 2);
+    const sellBroker = calcBrokerFee(mid);
+    const cgt = calcCapitalGainsTax(buyPrice, mid, holdYears, housing, interiorCost);
     const totalCosts = acquisitionTax + legalFee + buyBroker + totalInterest + totalPropertyTax + sellBroker + cgt + interiorCost;
-    const netProfit = bepSellPrice - buyPrice - totalCosts;
-    if (netProfit >= 0) break;
-    bepSellPrice += 10; // 10만원씩 증가
+    const netProfit = mid - buyPrice - totalCosts;
+    if (Math.abs(netProfit) < 5) { bepSellPrice = mid; break; } // 5만원 이내 수렴
+    if (netProfit < 0) lo = mid;
+    else { hi = mid; bepSellPrice = mid; }
   }
 
   const sellBroker = calcBrokerFee(bepSellPrice);
@@ -201,13 +209,13 @@ function calculate(
 
 // ─── 컴포넌트 ───────────────────────────────────────────
 export default function ApartmentCalculator() {
-  const [buyPrice, setBuyPrice] = useState(80000);   // 만원 (8억)
-  const [loanAmount, setLoanAmount] = useState(40000); // 4억
+  const [buyPrice, setBuyPrice] = useState(120000);   // 만원 (12억)
+  const [loanAmount, setLoanAmount] = useState(60000); // 6억
   const [loanRate, setLoanRate] = useState(4.0);
   const [holdYears, setHoldYears] = useState(3);
   const [housing, setHousing] = useState<HousingCount>("single");
   const [interiorCost, setInteriorCost] = useState(2000); // 2천만
-  const [annualPropertyTax, setAnnualPropertyTax] = useState(120); // 연 120만
+  const [annualPropertyTax, setAnnualPropertyTax] = useState(200); // 연 200만
   const [showReceipt, setShowReceipt] = useState(false);
 
   const result = useMemo(
@@ -243,24 +251,32 @@ export default function ApartmentCalculator() {
 
         {/* 핵심 입력 */}
         <div className="card p-5 space-y-5">
-          <Slider
-            label="매수가"
-            value={buyPrice}
-            min={10000}
-            max={200000}
-            step={1000}
-            onChange={setBuyPrice}
-            formatDisplay={(v) => formatManwon(v)}
-          />
-          <Slider
-            label="대출 금액"
-            value={loanAmount}
-            min={0}
-            max={Math.round(buyPrice * 0.8)}
-            step={1000}
-            onChange={setLoanAmount}
-            formatDisplay={(v) => formatManwon(v)}
-          />
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">매수가</label>
+            <div className="flex items-center gap-3">
+              <input
+                type="number"
+                value={buyPrice}
+                onChange={(e) => setBuyPrice(Math.max(1000, Number(e.target.value) || 0))}
+                className="input-field flex-1"
+                step={1000}
+              />
+              <span className="text-sm text-gray-500 shrink-0">만원 ({formatManwon(buyPrice)})</span>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">대출 금액</label>
+            <div className="flex items-center gap-3">
+              <input
+                type="number"
+                value={loanAmount}
+                onChange={(e) => setLoanAmount(Math.max(0, Math.min(buyPrice, Number(e.target.value) || 0)))}
+                className="input-field flex-1"
+                step={1000}
+              />
+              <span className="text-sm text-gray-500 shrink-0">만원 ({formatManwon(loanAmount)})</span>
+            </div>
+          </div>
           <Slider
             label="대출 금리"
             value={loanRate}
@@ -432,7 +448,7 @@ export default function ApartmentCalculator() {
           <Receipt className="w-4 h-4" /> SNS 공유용 영수증 보기
         </button>
 
-        <DisclaimerBanner text="양도소득세는 2024년 기준 세법을 단순화하여 적용한 참고값입니다. 실제 세액은 장기보유특별공제, 거주기간, 조정대상지역 여부 등에 따라 크게 달라지므로 반드시 세무사와 상담하세요." />
+        <DisclaimerBanner text="양도소득세는 2026년 8월 기준 세법을 단순화하여 적용한 참고값입니다. 비거주 1주택 장특공 폐지안 논의 중이며, 실제 세액은 거주기간·조정대상지역 여부 등에 따라 크게 달라지므로 반드시 세무사와 상담하세요." />
 
         <ReceiptModal
           open={showReceipt}

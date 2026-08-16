@@ -351,7 +351,7 @@ export default function ChildCalculator() {
           <Receipt className="w-4 h-4" /> SNS 공유용 영수증 보기
         </button>
 
-        <DisclaimerBanner text="비용은 2024년 보건사회연구원·통계청 기반 평균치이며, 지역·가정환경·교육 방침에 따라 크게 달라집니다. 정부 지원 정책(부모급여·아동수당·보육료지원)은 연도별로 변동됩니다." />
+        <DisclaimerBanner text="비용은 2026년 보건사회연구원·통계청 기반 평균치이며, 지역·가정환경·교육 방침에 따라 크게 달라집니다. 2026년 아동수당 9세 미만 확대, 부모급여(0세 월100만/1세 월50만) 반영." />
 
         <ReceiptModal
           open={showReceipt}

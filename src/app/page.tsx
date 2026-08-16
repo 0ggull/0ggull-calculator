@@ -124,7 +124,7 @@ export default function LandingPage() {
             "감정으로 결정하되, 숫자는 알고 결정하자"
           </p>
           <div className="flex items-center justify-center gap-4 text-xs text-gray-400">
-            <span>2024년 기준 데이터</span>
+            <span>2026년 기준 데이터</span>
             <span>·</span>
             <span>무료 · 회원가입 없음</span>
             <span>·</span>
@@ -134,7 +134,7 @@ export default function LandingPage() {
 
         {/* Disclaimer */}
         <div className="text-center text-[11px] text-gray-400 dark:text-gray-600 leading-relaxed px-4 py-4 border-t border-gray-100 dark:border-gray-800/50">
-          본 사이트의 모든 계산은 2024년 기준 평균값·공식 참고용 세율을 사용한 시뮬레이션이며,
+          본 사이트의 모든 계산은 2026년 기준 평균값·공식 참고용 세율을 사용한 시뮬레이션이며,
           법률·정책·시장 상황은 수시로 변경됩니다.<br />
           실제 의사결정 시 반드시 전문가(세무사·재무설계사·수의사 등)와 상담하세요.
         </div>

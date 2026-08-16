@@ -288,7 +288,7 @@ export default function PetCalculator() {
           <Receipt className="w-4 h-4" /> SNS 공유용 영수증 보기
         </button>
 
-        <DisclaimerBanner text="본 계산기의 비용은 2024년 기준 평균값이며, 지역·병원·브랜드에 따라 크게 달라질 수 있습니다. 펫보험 보장 범위와 실비 적용 여부에 따라 실 부담액이 변동됩니다." />
+        <DisclaimerBanner text="본 계산기의 비용은 2026년 기준 평균값이며, 지역·병원·브랜드에 따라 크게 달라질 수 있습니다. 펫보험 보장 범위와 실비 적용 여부에 따라 실 부담액이 변동됩니다." />
 
         {/* 영수증 모달 */}
         <ReceiptModal

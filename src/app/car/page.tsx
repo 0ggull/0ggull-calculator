@@ -37,23 +37,24 @@ const CAR_TABS = [
 ];
 
 const PRESETS: Record<CarType, CarPreset> = {
-  avante: { label: "아반떼/경차급", price: 2500, depRate: 0.10, efficiency: 14, effUnit: "km/L", fuelPrice: 1700, annualInsureTax: 120, annualMaint: 60, isEV: false },
-  sorento: { label: "쏘렌토/스포티지급", price: 4000, depRate: 0.09, efficiency: 11, effUnit: "km/L", fuelPrice: 1700, annualInsureTax: 150, annualMaint: 90, isEV: false },
-  grandeur: { label: "그랜저/제네시스급", price: 6000, depRate: 0.10, efficiency: 9, effUnit: "km/L", fuelPrice: 1700, annualInsureTax: 205, annualMaint: 130, isEV: false },
-  tesla: { label: "테슬라/전기차", price: 5500, depRate: 0.11, efficiency: 5.5, effUnit: "km/kWh", fuelPrice: 300, annualInsureTax: 143, annualMaint: 40, isEV: true },
+  avante: { label: "아반떼/경차급", price: 2600, depRate: 0.10, efficiency: 14, effUnit: "km/L", fuelPrice: 1860, annualInsureTax: 125, annualMaint: 65, isEV: false },
+  sorento: { label: "쏘렌토/스포티지급", price: 4200, depRate: 0.09, efficiency: 11, effUnit: "km/L", fuelPrice: 1860, annualInsureTax: 155, annualMaint: 95, isEV: false },
+  grandeur: { label: "그랜저/제네시스급", price: 6300, depRate: 0.10, efficiency: 9, effUnit: "km/L", fuelPrice: 1860, annualInsureTax: 215, annualMaint: 135, isEV: false },
+  tesla: { label: "테슬라/전기차", price: 5800, depRate: 0.11, efficiency: 5.5, effUnit: "km/kWh", fuelPrice: 350, annualInsureTax: 150, annualMaint: 45, isEV: true },
 };
 
-// 택시 요금 계산 (서울 기준 2024)
+// 택시 요금 계산 (서울 기준 2026)
 const TAXI_BASE_FARE = 4800;     // 기본요금 (1.6km)
 const TAXI_BASE_DIST = 1.6;      // 기본거리 km
 const TAXI_PER_131M = 100;       // 131m당 100원
 const TAXI_COST_PER_KM = TAXI_PER_131M / 0.131; // ≈ 763원/km (거리요금만)
 
-function taxiCostForKm(km: number): number {
-  // 기본요금 커버 거리 이하
-  if (km <= TAXI_BASE_DIST) return TAXI_BASE_FARE;
-  const extraKm = km - TAXI_BASE_DIST;
-  return TAXI_BASE_FARE + extraKm * TAXI_COST_PER_KM;
+function taxiCostForKm(totalKm: number): number {
+  // 평균 1회 탑승거리 5km 가정, 기본요금이 매 탑승마다 적용
+  const avgTripKm = 5;
+  const numTrips = totalKm / avgTripKm;
+  const costPerTrip = TAXI_BASE_FARE + Math.max(0, avgTripKm - TAXI_BASE_DIST) * TAXI_COST_PER_KM;
+  return numTrips * costPerTrip;
 }
 
 // ─── 계산 로직 ───────────────────────────────────────────
@@ -71,6 +72,8 @@ interface CalcResult {
   depreciation: number;         // 총 감가상각 (만원)
   fuelTotal: number;            // 총 유류비 (만원)
   residualValue: number;        // 잔존가치 (만원)
+  carCostPerKm: number;         // 자차 km당 비용 (원)
+  taxiCostPerKm: number;        // 택시 km당 비용 (원)
 }
 
 function calculate(
@@ -100,19 +103,23 @@ function calculate(
   // 연간 주차/통행료
   const annualParking = monthlyParking * 12;
 
-  // 자차 총 비용
-  const totalCarCost = acquisitionTax + totalDep + (annualInsureTax + annualMaint + annualFuel + annualParking) * years;
+  // 자차 총 비용 (잔존가치 차감 — 나중에 중고로 팔 수 있으니까)
+  const totalCarCost = acquisitionTax + totalDep + (annualInsureTax + annualMaint + annualFuel + annualParking) * years - residual;
   const monthlyCarCost = totalCarCost / (years * 12);
+
+  // 자차 km당 비용
+  const carCostPerKm = Math.round((totalCarCost * 10000) / (annualKm * years)); // 원/km
 
   // 100% 택시 (연간 비용)
   // 평균 1회 탑승거리 5km 가정, 연간 총 주행거리 기준
   const annualTaxiCost = taxiCostForKm(annualKm) / 10000; // 만원
   const monthlyTaxi = annualTaxiCost / 12;
+  const taxiCostPerKm = Math.round(taxiCostForKm(annualKm) / annualKm); // 원/km
 
   // 현실적 대안: 평일 대중교통 80% + 택시 20% + 주말 쏘카 월 2회
-  const monthlyTransport = 8;   // 대중교통 (만원)
-  const monthlyTaxiPart = 15;   // 택시 (만원) - 비/회식 등
-  const monthlySocar = 15;      // 쏘카/렌터카 (만원)
+  const monthlyTransport = 9;   // 대중교통 (만원) - 2026 지하철 1,550원 기준
+  const monthlyTaxiPart = 16;   // 택시 (만원) - 비/회식 등
+  const monthlySocar = 16;      // 쏘카/렌터카 (만원)
   const realisticMonthly = monthlyTransport + monthlyTaxiPart + monthlySocar;
   const realisticTotal = realisticMonthly * years * 12;
 
@@ -127,12 +134,13 @@ function calculate(
   let sp500 = 0, nasdaq = 0;
   const yearlyData: CalcResult["yearlyData"] = [];
   let carCum = acquisitionTax; // 취득세는 초기 비용
+  let residualForChart = price;
 
   for (let y = 1; y <= years; y++) {
-    carCum += annualInsureTax + annualMaint + annualFuel + annualParking;
-    // 감가도 비용에 포함
-    const yearDep = (y === 1 ? price : 0) * depRate; // 단순화를 위해 매년 비례
-    carCum += price * depRate * Math.pow(1 - depRate, y - 1);
+    // 해당 연도 감가
+    const yearDep = residualForChart * depRate;
+    residualForChart -= yearDep;
+    carCum += annualInsureTax + annualMaint + annualFuel + annualParking + yearDep;
 
     const realisticCum = realisticMonthly * y * 12;
 
@@ -165,6 +173,8 @@ function calculate(
     depreciation: Math.round(totalDep),
     fuelTotal: Math.round(annualFuel * years),
     residualValue: Math.round(residual),
+    carCostPerKm,
+    taxiCostPerKm,
   };
 }
 
@@ -236,11 +246,31 @@ export default function CarCalculator() {
 
         {/* 핵심 결과 */}
         <div className="card p-6 bg-gradient-to-br from-rose-50 to-amber-50 dark:from-rose-950/20 dark:to-amber-950/20 border-rose-200 dark:border-rose-800/50">
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">차를 소유하면 매달 감가 포함</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">차를 소유하면 매달 (중고 매도 가정 후에도)</p>
           <p className="text-3xl md:text-4xl font-bold text-rose-600 dark:text-rose-400">
             월 {result.carMonthly.toLocaleString()}만원
           </p>
-          <p className="text-sm text-gray-500 mt-1">이 사라집니다. ({years}년 총 {formatManwon(result.carTotal)})</p>
+          <p className="text-sm text-gray-500 mt-1">이 사라집니다. ({years}년 총 {formatManwon(result.carTotal)}, {years}년 후 중고매도 {formatManwon(result.residualValue)} 차감 반영)</p>
+        </div>
+
+        {/* km당 비용 비교 */}
+        <div className="card p-5 space-y-3">
+          <p className="section-title">📏 km당 비용 직접 비교</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="p-4 bg-rose-50 dark:bg-rose-950/30 rounded-xl text-center">
+              <p className="text-xs text-gray-500 mb-1">자차 (감가+유류+보험+주차 포함)</p>
+              <p className="text-2xl font-bold text-rose-600 dark:text-rose-400">{result.carCostPerKm.toLocaleString()}원</p>
+              <p className="text-xs text-gray-400">/ km</p>
+            </div>
+            <div className="p-4 bg-amber-50 dark:bg-amber-950/30 rounded-xl text-center">
+              <p className="text-xs text-gray-500 mb-1">택시 (평균 5km 탑승 기준)</p>
+              <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{result.taxiCostPerKm.toLocaleString()}원</p>
+              <p className="text-xs text-gray-400">/ km</p>
+            </div>
+          </div>
+          <p className="text-xs text-gray-400 leading-relaxed">
+            * 택시 계산식: 기본요금 4,800원(1.6km) + 초과거리 131m당 100원 (≈km당 763원). 평균 1회 탑승 5km 가정.
+          </p>
         </div>
 
         {/* 비교 카드 */}
@@ -353,7 +383,7 @@ export default function CarCalculator() {
           <Receipt className="w-4 h-4" /> SNS 공유용 영수증 보기
         </button>
 
-        <DisclaimerBanner text="택시 요금은 서울 기준 2024년 요율이며, 지역·시간대에 따라 달라집니다. 감가상각은 차량 상태·사고 유무·시장 상황에 영향을 받습니다. 실제 비교 시 본인 운행 패턴을 기준으로 판단하세요." />
+        <DisclaimerBanner text="택시 요금은 서울 기준 2026년 요율이며, 지역·시간대에 따라 달라집니다. 유류비는 2026년 8월 전국 평균 기준입니다. 감가상각은 차량 상태·사고 유무·시장 상황에 영향을 받습니다." />
 
         <ReceiptModal
           open={showReceipt}
