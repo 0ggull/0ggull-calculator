@@ -305,7 +305,7 @@ export default function ApartmentCalculator() {
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-700 dark:text-gray-300">보유 예정 기간</label>
             <div className="flex items-center gap-3">
-              <input type="number" value={holdYears} onChange={(e) => setHoldYears(Math.max(1, Math.min(30, Number(e.target.value) || 1))} className="input-field w-24" min={1} max={30} />
+              <input type="number" value={holdYears} onChange={(e) => setHoldYears(Math.max(1, Math.min(30, Number(e.target.value) || 1)))} className="input-field w-24" min={1} max={30} />
               <span className="text-sm text-gray-500">년</span>
               <div className="flex gap-1.5 flex-wrap flex-1">
                 {[2, 3, 5, 7, 10].map((y) => (
