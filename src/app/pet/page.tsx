@@ -65,10 +65,10 @@ const EXTRAS: ExtraOpt[] = [
 ];
 
 // ─── 계산 로직 ───────────────────────────────────────────
-function calculate(preset: PetPreset, foodMult: number, enabledExtras: string[], petType: PetType) {
+function calculate(preset: PetPreset, enabledExtras: string[], petType: PetType) {
   const { lifespan } = preset;
   const initial = preset.initialVaccination + preset.neutering + preset.initialSupplies;
-  const monthlyBase = preset.monthlyFood * foodMult + preset.monthlyParasite + preset.monthlyGrooming + preset.monthlySupplies + preset.monthlyInsurance;
+  const monthlyBase = preset.monthlyFood + preset.monthlyParasite + preset.monthlyGrooming + preset.monthlySupplies + preset.monthlyInsurance;
   const annualBase = monthlyBase * 12;
 
   const yearly: { age: number; costNom: number; costReal: number; cumNom: number; cumReal: number; sp500: number; nasdaq: number }[] = [];
@@ -124,7 +124,7 @@ export default function PetCalculator() {
     setEnabledExtras(defaultExtras);
   };
 
-  const result = useMemo(() => calculate(custom, 1.0, enabledExtras, petType), [custom, enabledExtras, petType]);
+  const result = useMemo(() => calculate(custom, enabledExtras, petType), [custom, enabledExtras, petType]);
 
   const chartData = result.yearly.map((y) => ({
     name: `${y.age}세`,
@@ -270,7 +270,7 @@ export default function PetCalculator() {
           open={showReceipt}
           onClose={() => setShowReceipt(false)}
           title={`${PET_TABS.find((t) => t.key === petType)?.emoji} ${PET_TABS.find((t) => t.key === petType)?.label} ${result.lifespan}년 생애비용`}
-          footerMessage="이 돈보다 15년간 주는 행복이 더 크다면, 당신은 준비된 최고의 반려인입니다. 🐾"
+          footerMessage={`이 돈보다 ${result.lifespan}년간 주는 행복이 더 크다면, 당신은 준비된 최고의 반려인입니다. 🐾`}
         >
           <div className="space-y-2">
             <div className="flex justify-between"><span>초기 비용</span><span>{formatManwon(custom.initialVaccination + custom.neutering + custom.initialSupplies)}</span></div>

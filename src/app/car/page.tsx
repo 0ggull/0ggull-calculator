@@ -4,7 +4,7 @@ import { useState, useMemo } from "react";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from "recharts";
-import { Car, Bus, TrendingUp, Receipt, Fuel } from "lucide-react";
+import { Car, Bus, TrendingUp, Receipt } from "lucide-react";
 import Header from "@/components/ui/Header";
 import TabSelector from "@/components/ui/TabSelector";
 import Slider from "@/components/ui/Slider";
@@ -117,7 +117,8 @@ function calculate(
   const taxiCostPerKm = Math.round(taxiCostForKm(annualKm, avgTripKm) / annualKm);
 
   // 현실적 대안
-  const realisticMonthly = 41; // 대중교통 9 + 택시 16 + 쏘카 16
+  // 현실적 대안: 주행거리 비례 (연 1.5만km 기준 월 41만원)
+  const realisticMonthly = Math.round(41 * (annualKm / 15000));
   const realisticTotal = realisticMonthly * years * 12;
 
   const savings = monthlyCarCost - realisticMonthly;
@@ -258,11 +259,11 @@ export default function CarCalculator() {
         {/* 비교 카드 */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <ResultCard icon={<Car className="w-5 h-5" />} label="100% 택시 (충격요법)" value={`월 ${result.taxiOnlyMonthly.toLocaleString()}만원`} sublabel={`평균 ${avgTripKm}km씩, 연 ${(annualKm / 10000).toFixed(1)}만km`} accent="amber" />
-          <ResultCard icon={<Bus className="w-5 h-5" />} label="현실적 대안 (대중교통+택시+쏘카)" value={`월 ${result.realisticMonthly}만원`} sublabel="대중교통 9 + 택시 16 + 쏘카 16만원" accent="green" />
+          <ResultCard icon={<Bus className="w-5 h-5" />} label="현실적 대안 (대중교통+택시+쏘카)" value={`월 ${result.realisticMonthly}만원`} sublabel={`연 ${(annualKm/10000).toFixed(1)}만km 기준 비례 산출`} accent="green" />
         </div>
 
         {/* 절약 & 기회비용 */}
-        {result.savings > 0 && (
+        {result.savings > 0 ? (
           <div className="card p-6 bg-gradient-to-br from-emerald-50 to-sky-50 dark:from-emerald-950/20 dark:to-sky-950/20 border-emerald-200 dark:border-emerald-800/50 space-y-3">
             <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
               대안으로 전환 시 매월 <span className="font-bold text-emerald-600 dark:text-emerald-400">{result.savings.toLocaleString()}만원</span> 절약
@@ -277,6 +278,13 @@ export default function CarCalculator() {
                 <p className="text-xl font-bold text-purple-600 dark:text-purple-400">{formatManwon(result.nasdaq)}</p>
               </div>
             </div>
+          </div>
+        ) : (
+          <div className="card p-5 bg-gradient-to-br from-sky-50 to-indigo-50 dark:from-sky-950/20 dark:to-indigo-950/20 border-sky-200 dark:border-sky-800/50">
+            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              🚗 이 주행 패턴에서는 <span className="font-bold text-brand-600 dark:text-brand-400">자차가 월 {Math.abs(result.savings).toLocaleString()}만원 더 유리</span>합니다.
+            </p>
+            <p className="text-xs text-gray-500 mt-1">주행거리가 많을수록 자차의 km당 단가가 낮아집니다.</p>
           </div>
         )}
 

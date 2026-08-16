@@ -4,11 +4,9 @@ import { useState, useMemo } from "react";
 import {
   LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine,
 } from "recharts";
-import { Baby, GraduationCap, TrendingUp, Receipt, BookOpen, AlertTriangle, Shield } from "lucide-react";
+import { Baby, TrendingUp, Receipt, BookOpen, AlertTriangle, Shield } from "lucide-react";
 import Header from "@/components/ui/Header";
 import TabSelector from "@/components/ui/TabSelector";
-import Slider from "@/components/ui/Slider";
-import NumberInput from "@/components/ui/NumberInput";
 import ResultCard from "@/components/ui/ResultCard";
 import ReceiptModal from "@/components/ui/ReceiptModal";
 import DisclaimerBanner from "@/components/ui/DisclaimerBanner";
@@ -84,7 +82,7 @@ interface ChildResult {
   endAge: number; monthlyAvg: number;
 }
 
-function calculate(eduStyle: EduStyle, gender: Gender, region: Region): ChildResult {
+function calculate(eduStyle: EduStyle, gender: Gender, region: Region, uniType: "private" | "national"): ChildResult {
   const regionMult = REGION_MULTIPLIER[region];
   const endAge = gender === "male" ? 26 : 22;
   const yearly: YearData[] = [];
@@ -103,9 +101,15 @@ function calculate(eduStyle: EduStyle, gender: Gender, region: Region): ChildRes
     const eduMult = EDU_MULTIPLIERS[eduStyle](age);
     // 군복무/취준은 교육성향 무관
     const isPostGrad = age >= 23;
-    const mult = isPostGrad ? 1.0 : eduMult * regionMult;
+    const isUniversity = age >= 19 && age <= 22;
+    let mult = isPostGrad ? 1.0 : eduMult * regionMult;
 
+    // 대학생: 국립/사립에 따라 등록금 차이 반영
     let annualCost = phase.monthly * mult * 12;
+    if (isUniversity && uniType === "national") {
+      // 국립대: 등록금 연 450만 vs 사립 850만 → 월비용 약 33만 감소
+      annualCost -= 33 * regionMult * 12;
+    }
 
     if (age === phase.ageStart && phase.oneTimeCost) {
       annualCost += phase.oneTimeCost;
@@ -156,9 +160,10 @@ export default function ChildCalculator() {
   const [eduStyle, setEduStyle] = useState<EduStyle>("average");
   const [gender, setGender] = useState<Gender>("male");
   const [region, setRegion] = useState<Region>("metro");
+  const [uniType, setUniType] = useState<"private" | "national">("private");
   const [showReceipt, setShowReceipt] = useState(false);
 
-  const result = useMemo(() => calculate(eduStyle, gender, region), [eduStyle, gender, region]);
+  const result = useMemo(() => calculate(eduStyle, gender, region, uniType), [eduStyle, gender, region, uniType]);
 
   const chartData = result.yearly.map((y) => ({
     name: `${y.age}세`, "누적 지출": y.cumNom, "S&P500": y.sp500, "나스닥": y.nasdaq,
@@ -181,6 +186,18 @@ export default function ChildCalculator() {
 
         {/* 지역 선택 */}
         <TabSelector tabs={REGION_TABS} active={region} onChange={(k) => setRegion(k as Region)} />
+
+        {/* 대학 유형 */}
+        <div className="flex gap-2">
+          <button onClick={() => setUniType("private")}
+            className={`flex-1 py-2.5 rounded-xl text-sm font-medium border transition-all ${uniType === "private" ? "bg-brand-50 dark:bg-brand-900/40 border-brand-300 dark:border-brand-600 text-brand-700 dark:text-brand-200" : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400"}`}>
+            🏫 사립대 (연 850만)
+          </button>
+          <button onClick={() => setUniType("national")}
+            className={`flex-1 py-2.5 rounded-xl text-sm font-medium border transition-all ${uniType === "national" ? "bg-brand-50 dark:bg-brand-900/40 border-brand-300 dark:border-brand-600 text-brand-700 dark:text-brand-200" : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400"}`}>
+            🏛️ 국립대 (연 450만)
+          </button>
+        </div>
 
         {/* 핵심 결과 */}
         <div className="card p-6 bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 border-amber-200 dark:border-amber-800/50 space-y-2">

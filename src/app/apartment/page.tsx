@@ -4,7 +4,7 @@ import { useState, useMemo } from "react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
 } from "recharts";
-import { Home, Receipt, TrendingDown, TrendingUp, Calculator, AlertCircle, Building } from "lucide-react";
+import { Receipt, TrendingDown, TrendingUp, Calculator, AlertCircle, Building } from "lucide-react";
 import Header from "@/components/ui/Header";
 import Slider from "@/components/ui/Slider";
 import NumberInput from "@/components/ui/NumberInput";
@@ -62,8 +62,26 @@ function calcCapitalGainsTax(
     return Math.round(gain * rate);
   }
 
-  // 다주택 중과
-  return Math.round(gain * 0.50);
+  // 다주택 중과 (2026.5.9 재시행: 기본세율 6~45% + 중과 20~30%p)
+  // 장특공 미적용, 기본공제 250만만 적용
+  const base = Math.max(0, gain - 250);
+  const brackets = [
+    { limit: 1400, rate: 0.06 }, { limit: 5000, rate: 0.15 },
+    { limit: 8800, rate: 0.24 }, { limit: 15000, rate: 0.35 },
+    { limit: 30000, rate: 0.38 }, { limit: 50000, rate: 0.40 },
+    { limit: 100000, rate: 0.42 }, { limit: Infinity, rate: 0.45 },
+  ];
+  let tax = 0, remaining = base, prev = 0;
+  for (const b of brackets) {
+    const chunk = Math.min(remaining, b.limit - prev);
+    if (chunk <= 0) break;
+    tax += chunk * b.rate;
+    remaining -= chunk;
+    prev = b.limit;
+  }
+  // 중과 가산: 2주택 +20%p, 3주택 +30%p → 2주택 기준 적용
+  tax += base * 0.20;
+  return Math.round(tax);
 }
 
 function calcProgressiveTax(taxableGain: number, holdYears: number): number {
@@ -474,7 +492,7 @@ export default function ApartmentCalculator() {
           <Receipt className="w-4 h-4" /> SNS 공유용 영수증 보기
         </button>
 
-        <DisclaimerBanner text="세율·제도는 수시 변경됩니다. 양도세는 거주기간·조정지역 여부에 따라 크게 달라지며, 비거주 1주택 장특공 폐지 논의가 진행 중입니다. 반드시 세무사와 상담하세요." />
+        <DisclaimerBanner text="다주택 양도세 중과가 2026.5.9부터 재시행되었습니다(2주택 +20%p, 3주택 +30%p). 세율·제도는 수시 변경되며, 비거주 1주택 장특공 축소가 논의 중입니다. 반드시 세무사와 상담하세요." />
 
         <ReceiptModal open={showReceipt} onClose={() => setShowReceipt(false)}
           title={`🏠 아파트 ${formatManwon(buyPrice)} 매도 BEP`}
