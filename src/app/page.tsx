@@ -10,7 +10,7 @@ const CALCULATORS = [
     icon: <PawPrint className="w-7 h-7" />,
     emoji: "🐾",
     title: "반려동물 생애비용",
-    description: "소형견/중형견/대형견/고양이 15년 생애 총비용과 투자 기회비용",
+    description: "소형견/중형견/대형견/고양이 생애 총비용과 투자 기회비용",
     highlight: "평균 5,000만~1.5억원",
     color: "from-amber-500 to-orange-500",
     bgLight: "bg-amber-50",
@@ -75,12 +75,12 @@ export default function LandingPage() {
         {/* Hero */}
         <section className="text-center space-y-4 animate-fade-in">
           <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-gray-100 tracking-tight leading-tight">
-            인생의 큰 결정 앞에서,<br />
-            <span className="text-brand-600 dark:text-brand-400">숫자로 먼저 따져보기</span>
+            알면 좀 <span className="text-brand-600 dark:text-brand-400">꿀꿀</span>한<br />
+            인생 가격표
           </h1>
           <p className="text-gray-500 dark:text-gray-400 text-sm md:text-base max-w-xl mx-auto leading-relaxed">
-            반려동물, 자동차, 내 집 마련, 아이 — 감정 대신 숫자를 먼저 꺼내봅니다.<br className="hidden md:block" />
-            기본값이 채워져 있어 가볍게 시작하고, 상세히 조정해서 내 상황에 맞출 수 있어요.
+            현실을 보면 좀 꿀꿀하지만, 모르는 것보다 낫잖아.<br className="hidden md:block" />
+            인생의 큰 결정 앞에서, 감정 말고 숫자를 먼저 꺼내봅니다.
           </p>
         </section>
 
@@ -127,8 +127,8 @@ export default function LandingPage() {
 
         {/* Disclaimer */}
         <div className="text-center text-[11px] text-gray-400 dark:text-gray-600 leading-relaxed px-4 py-4 border-t border-gray-100 dark:border-gray-800/50">
-          본 사이트의 모든 계산은 참고용 시뮬레이션이며, 법률·정책·시장 상황은 수시로 변경됩니다.<br />
-          정확한 판단이 필요하시면 반드시 전문가(세무사·재무설계사·수의사 등)와 상담하세요.
+          모든 계산은 참고용 시뮬레이션이며, 법률·정책·시장은 수시로 변합니다.<br />
+          정확한 판단이 필요하면 전문가와 상담하세요. · 무료 · 개인정보 수집 없음
         </div>
       </main>
     </div>

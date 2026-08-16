@@ -116,7 +116,7 @@ function calculate(preset: PetPreset, foodMult: number, enabledExtras: string[],
 export default function PetCalculator() {
   const [petType, setPetType] = useState<PetType>("small_dog");
   const [foodGrade, setFoodGrade] = useState<FoodGrade>("standard");
-  const [enabledExtras, setEnabledExtras] = useState<string[]>([]);
+  const [enabledExtras, setEnabledExtras] = useState<string[]>(["patella"]);
   const [showReceipt, setShowReceipt] = useState(false);
 
   // 사용자 커스텀 가능한 프리셋 (탭 변경 시 리셋)
@@ -126,13 +126,10 @@ export default function PetCalculator() {
     const pt = key as PetType;
     setPetType(pt);
     setCustom(PRESETS[pt]);
-    // 적용 불가능 옵션 제거
-    setEnabledExtras((prev) =>
-      prev.filter((id) => {
-        const ext = EXTRAS.find((e) => e.id === id);
-        return ext && (ext.pets === "all" || ext.pets.includes(pt));
-      })
-    );
+    // 소형견은 슬개골 탈구 기본 체크
+    const defaultExtras: string[] = [];
+    if (pt === "small_dog") defaultExtras.push("patella");
+    setEnabledExtras(defaultExtras);
   };
 
   const foodMult = FOOD_GRADES.find((f) => f.key === foodGrade)!.mult;
@@ -155,24 +152,9 @@ export default function PetCalculator() {
         {/* 동물 타입 선택 */}
         <TabSelector tabs={PET_TABS} active={petType} onChange={handlePetChange} />
 
-        {/* 사료 등급 */}
-        <div className="card p-5 space-y-3">
-          <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">사료 등급</p>
-          <div className="flex gap-2">
-            {FOOD_GRADES.map((g) => (
-              <button
-                key={g.key}
-                onClick={() => setFoodGrade(g.key)}
-                className={`flex-1 py-2 rounded-xl text-xs font-medium border transition-all
-                  ${foodGrade === g.key
-                    ? "bg-brand-50 dark:bg-brand-950 border-brand-300 dark:border-brand-700 text-brand-700 dark:text-brand-300"
-                    : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400"
-                  }`}
-              >
-                {g.label}
-              </button>
-            ))}
-          </div>
+        {/* 수명 설정 */}
+        <div className="card p-5">
+          <Slider label="예상 수명" value={custom.lifespan} min={5} max={20} unit="년" onChange={(v) => setCustom({ ...custom, lifespan: v })} />
         </div>
 
         {/* 상세 비용 입력 (접이식) */}
@@ -180,7 +162,21 @@ export default function PetCalculator() {
           <summary className="px-5 py-4 cursor-pointer text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
             💰 상세 비용 직접 수정 (고급 설정)
           </summary>
-          <div className="px-5 pb-5 grid grid-cols-2 md:grid-cols-3 gap-3 border-t border-gray-100 dark:border-gray-800 pt-4">
+          <div className="px-5 pb-5 border-t border-gray-100 dark:border-gray-800 pt-4 space-y-4">
+            {/* 사료 등급 */}
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">사료 등급</p>
+              <div className="flex gap-2">
+                {FOOD_GRADES.map((g) => (
+                  <button key={g.key} onClick={() => setFoodGrade(g.key)}
+                    className={`flex-1 py-2 rounded-xl text-xs font-medium border transition-all ${foodGrade === g.key ? "bg-brand-50 dark:bg-brand-950 border-brand-300 dark:border-brand-700 text-brand-700 dark:text-brand-300" : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400"}`}>
+                    {g.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {/* 개별 비용 */}
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             <NumberInput label="초기 접종비" value={custom.initialVaccination} onChange={(v) => setCustom({ ...custom, initialVaccination: v })} />
             <NumberInput label="중성화 비용" value={custom.neutering} onChange={(v) => setCustom({ ...custom, neutering: v })} />
             <NumberInput label="초기 용품비" value={custom.initialSupplies} onChange={(v) => setCustom({ ...custom, initialSupplies: v })} />
@@ -191,7 +187,7 @@ export default function PetCalculator() {
             <NumberInput label="펫보험 월" value={custom.monthlyInsurance} onChange={(v) => setCustom({ ...custom, monthlyInsurance: v })} step={0.5} />
             <NumberInput label="8세+ 연간 병원비" value={custom.annualVetAfter8} onChange={(v) => setCustom({ ...custom, annualVetAfter8: v })} />
             <NumberInput label="장례비" value={custom.funeralCost} onChange={(v) => setCustom({ ...custom, funeralCost: v })} />
-            <NumberInput label="기본 수명" value={custom.lifespan} onChange={(v) => setCustom({ ...custom, lifespan: Math.max(1, Math.min(20, v)) })} unit="년" />
+            </div>
           </div>
         </details>
 
@@ -288,7 +284,7 @@ export default function PetCalculator() {
           <Receipt className="w-4 h-4" /> SNS 공유용 영수증 보기
         </button>
 
-        <DisclaimerBanner text="본 계산기의 비용은 2026년 기준 평균값이며, 지역·병원·브랜드에 따라 크게 달라질 수 있습니다. 펫보험 보장 범위와 실비 적용 여부에 따라 실 부담액이 변동됩니다." />
+        <DisclaimerBanner text="비용은 평균값이며, 지역·병원·브랜드에 따라 크게 달라질 수 있습니다. 펫보험 보장 범위와 실비 적용 여부에 따라 실 부담액이 변동됩니다." />
 
         {/* 영수증 모달 */}
         <ReceiptModal

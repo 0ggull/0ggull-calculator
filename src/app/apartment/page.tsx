@@ -138,9 +138,16 @@ function calculate(
   annualPropertyTax: number, loanType: LoanType,
   jeonseRatio: number, conversionRate: number, isResiding: boolean
 ): AptResult {
-  const acquisitionTax = calcAcquisitionTax(buyPrice, housing);
-  const legalFee = Math.round(buyPrice * 0.002); // 매매가의 약 0.2% (법무사+채권)
-  const buyBroker = calcBrokerFee(buyPrice);
+  return calculateWithOverrides(buyPrice, loanAmount, loanRate, holdYears, housing, interiorCost, annualPropertyTax, loanType, jeonseRatio, conversionRate, isResiding, calcAcquisitionTax(buyPrice, housing), Math.round(buyPrice * 0.002), calcBrokerFee(buyPrice));
+}
+
+function calculateWithOverrides(
+  buyPrice: number, loanAmount: number, loanRate: number,
+  holdYears: number, housing: HousingCount, interiorCost: number,
+  annualPropertyTax: number, loanType: LoanType,
+  jeonseRatio: number, conversionRate: number, isResiding: boolean,
+  acquisitionTax: number, legalFee: number, buyBroker: number
+): AptResult {
 
   // 대출이자
   const totalInterest = loanType === "amortizing"
@@ -222,13 +229,28 @@ export default function ApartmentCalculator() {
   const [annualPropertyTax, setAnnualPropertyTax] = useState(200);
   const [loanType, setLoanType] = useState<LoanType>("interest_only");
   const [isResiding, setIsResiding] = useState(true);
-  const [jeonseRatio, setJeonseRatio] = useState(55); // %
-  const [conversionRate, setConversionRate] = useState(4.5); // %
+  const [jeonseRatio, setJeonseRatio] = useState(55);
+  const [conversionRate, setConversionRate] = useState(4.5);
   const [showReceipt, setShowReceipt] = useState(false);
 
+  // 사용자 수정 가능한 비용 (기본값은 자동 계산)
+  const [customAcqTax, setCustomAcqTax] = useState<number | null>(null);
+  const [customLegalFee, setCustomLegalFee] = useState<number | null>(null);
+  const [customBuyBroker, setCustomBuyBroker] = useState<number | null>(null);
+
+  // 자동 계산된 기본값
+  const autoAcqTax = calcAcquisitionTax(buyPrice, housing);
+  const autoLegalFee = Math.round(buyPrice * 0.002);
+  const autoBuyBroker = calcBrokerFee(buyPrice);
+
+  // 실제 사용값 (사용자 수정값 우선, 없으면 자동값)
+  const effectiveAcqTax = customAcqTax ?? autoAcqTax;
+  const effectiveLegalFee = customLegalFee ?? autoLegalFee;
+  const effectiveBuyBroker = customBuyBroker ?? autoBuyBroker;
+
   const result = useMemo(
-    () => calculate(buyPrice, loanAmount, loanRate / 100, holdYears, housing, interiorCost, annualPropertyTax, loanType, jeonseRatio / 100, conversionRate / 100, isResiding),
-    [buyPrice, loanAmount, loanRate, holdYears, housing, interiorCost, annualPropertyTax, loanType, jeonseRatio, conversionRate, isResiding]
+    () => calculateWithOverrides(buyPrice, loanAmount, loanRate / 100, holdYears, housing, interiorCost, annualPropertyTax, loanType, jeonseRatio / 100, conversionRate / 100, isResiding, effectiveAcqTax, effectiveLegalFee, effectiveBuyBroker),
+    [buyPrice, loanAmount, loanRate, holdYears, housing, interiorCost, annualPropertyTax, loanType, jeonseRatio, conversionRate, isResiding, effectiveAcqTax, effectiveLegalFee, effectiveBuyBroker]
   );
 
   const costBreakdown = [
@@ -240,12 +262,6 @@ export default function ApartmentCalculator() {
     { name: "인테리어", value: result.deductibleExpense, color: "#10b981" },
     { name: "매도 복비", value: result.sellBroker, color: "#f43f5e" },
     ...(result.savedRent > 0 ? [{ name: "주거비 절약(-)", value: -result.savedRent, color: "#22c55e" }] : []),
-  ];
-
-  const holdOptions = [
-    { key: "1", label: "1년" }, { key: "2", label: "2년" },
-    { key: "3", label: "3년" }, { key: "5", label: "5년" },
-    { key: "7", label: "7년" }, { key: "10", label: "10년" },
   ];
 
   return (
@@ -287,15 +303,20 @@ export default function ApartmentCalculator() {
 
           {/* 보유기간 */}
           <div className="space-y-2">
-            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">보유 예정 기간</p>
-            <div className="flex gap-2 flex-wrap">
-              {holdOptions.map((opt) => (
-                <button key={opt.key} onClick={() => setHoldYears(Number(opt.key))}
-                  className={`px-4 py-2 rounded-xl text-sm font-medium border transition-all ${holdYears === Number(opt.key) ? "bg-brand-50 dark:bg-brand-950 border-brand-300 dark:border-brand-700 text-brand-700 dark:text-brand-300" : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400"}`}>
-                  {opt.label}
-                </button>
-              ))}
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">보유 예정 기간</label>
+            <div className="flex items-center gap-3">
+              <input type="number" value={holdYears} onChange={(e) => setHoldYears(Math.max(1, Math.min(30, Number(e.target.value) || 1))} className="input-field w-24" min={1} max={30} />
+              <span className="text-sm text-gray-500">년</span>
+              <div className="flex gap-1.5 flex-wrap flex-1">
+                {[2, 3, 5, 7, 10].map((y) => (
+                  <button key={y} onClick={() => setHoldYears(y)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${holdYears === y ? "bg-brand-50 dark:bg-brand-950 border-brand-300 dark:border-brand-700 text-brand-700 dark:text-brand-300" : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 text-gray-500"}`}>
+                    {y}년
+                  </button>
+                ))}
+              </div>
             </div>
+            {holdYears < 2 && <p className="text-xs text-rose-500 font-medium">⚠️ 2년 미만 보유 시 양도세 중과 ({holdYears < 1 ? "70%" : "60%"}) 적용됩니다</p>}
           </div>
         </div>
 
@@ -332,11 +353,20 @@ export default function ApartmentCalculator() {
         {/* 상세 설정 */}
         <details className="card overflow-hidden">
           <summary className="px-5 py-4 cursor-pointer text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-            🏗️ 상세 설정 직접 수정
+            🏗️ 비용 상세 직접 수정 (자동 계산값 기본 입력)
           </summary>
-          <div className="px-5 pb-5 grid grid-cols-2 gap-3 border-t border-gray-100 dark:border-gray-800 pt-4">
-            <NumberInput label="인테리어/자본적 지출" value={interiorCost} onChange={setInteriorCost} hint="샷시·확장 등 양도세 경비 인정" />
+          <div className="px-5 pb-5 grid grid-cols-2 md:grid-cols-3 gap-3 border-t border-gray-100 dark:border-gray-800 pt-4">
+            <NumberInput label="취득세+지방교육세" value={effectiveAcqTax} onChange={(v) => setCustomAcqTax(v)} hint={`자동: ${autoAcqTax.toLocaleString()}만원`} />
+            <NumberInput label="법무사+채권 할인" value={effectiveLegalFee} onChange={(v) => setCustomLegalFee(v)} hint={`자동: ${autoLegalFee.toLocaleString()}만원`} />
+            <NumberInput label="매수 중개보수" value={effectiveBuyBroker} onChange={(v) => setCustomBuyBroker(v)} hint={`자동: ${autoBuyBroker.toLocaleString()}만원`} />
+            <NumberInput label="인테리어/자본적 지출" value={interiorCost} onChange={setInteriorCost} hint="양도세 경비 인정 항목" />
             <NumberInput label="연간 재산세+종부세" value={annualPropertyTax} onChange={setAnnualPropertyTax} />
+          </div>
+          <div className="px-5 pb-4">
+            <button onClick={() => { setCustomAcqTax(null); setCustomLegalFee(null); setCustomBuyBroker(null); }}
+              className="text-xs text-brand-600 dark:text-brand-400 hover:underline">
+              ↺ 자동 계산값으로 초기화
+            </button>
           </div>
         </details>
 

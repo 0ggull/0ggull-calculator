@@ -2,10 +2,10 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "0GGULL | 인생 큰 결정 전, 숫자로 먼저 따져보기",
+  title: "0GGULL | 알면 꿀꿀한 인생 가격표",
   description:
-    "반려동물, 자동차, 내 집 마련, 자녀 양육 — 인생의 빅 이벤트 비용과 기회비용을 숫자로 시뮬레이션합니다.",
-  keywords: ["기회비용", "생애비용", "계산기", "반려동물", "자동차", "아파트", "양육비", "투자"],
+    "반려동물, 자동차, 내 집 마련, 자녀 양육 — 인생의 큰 결정에 숨겨진 진짜 비용을 계산합니다.",
+  keywords: ["기회비용", "생애비용", "계산기", "반려동물", "자동차", "아파트", "양육비", "투자", "0ggull"],
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -17,6 +17,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link
           href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800&display=swap"
           rel="stylesheet"
+        />
+        {/* Google Analytics */}
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-QLYP5PQWP9" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-QLYP5PQWP9');`,
+          }}
         />
         <script
           dangerouslySetInnerHTML={{

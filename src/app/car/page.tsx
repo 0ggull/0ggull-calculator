@@ -12,7 +12,6 @@ import NumberInput from "@/components/ui/NumberInput";
 import ResultCard from "@/components/ui/ResultCard";
 import ReceiptModal from "@/components/ui/ReceiptModal";
 import DisclaimerBanner from "@/components/ui/DisclaimerBanner";
-import CheckOption from "@/components/ui/CheckOption";
 import { formatManwon, SP500_RATE, NASDAQ_RATE } from "@/lib/finance";
 
 // ─── 타입 & 상수 ─────────────────────────────────────────
@@ -80,13 +79,9 @@ interface CalcResult {
 
 function calculate(
   preset: CarPreset, years: number, annualKm: number,
-  monthlyParking: number, purchaseType: PurchaseType, avgTripKm: number,
-  isUsed: boolean
+  monthlyParking: number, purchaseType: PurchaseType, avgTripKm: number
 ): CalcResult {
-  const { price: origPrice, depRate, efficiency, fuelPrice, annualInsureTax, annualMaint } = preset;
-
-  // 중고차: 3년 된 차 가정 → 가격 30% 할인, 감가율 유지
-  const price = isUsed ? Math.round(origPrice * 0.7) : origPrice;
+  const { price, depRate, efficiency, fuelPrice, annualInsureTax, annualMaint } = preset;
 
   // 취득세 (신차 7%, 중고 7%)
   const acquisitionTax = Math.round(price * 0.07);
@@ -171,7 +166,6 @@ export default function CarCalculator() {
   const [monthlyParking, setMonthlyParking] = useState(10);
   const [purchaseType, setPurchaseType] = useState<PurchaseType>("cash");
   const [avgTripKm, setAvgTripKm] = useState(5);
-  const [isUsed, setIsUsed] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
   const [custom, setCustom] = useState(PRESETS.avante);
 
@@ -181,7 +175,7 @@ export default function CarCalculator() {
     setCustom(PRESETS[ct]);
   };
 
-  const result = useMemo(() => calculate(custom, years, annualKm, monthlyParking, purchaseType, avgTripKm, isUsed), [custom, years, annualKm, monthlyParking, purchaseType, avgTripKm, isUsed]);
+  const result = useMemo(() => calculate(custom, years, annualKm, monthlyParking, purchaseType, avgTripKm), [custom, years, annualKm, monthlyParking, purchaseType, avgTripKm]);
 
   const chartData = result.yearlyData.map((d) => ({
     name: `${d.year}년`, "자차 누적": d.carCum, "대안 누적": d.realisticCum,
@@ -194,7 +188,7 @@ export default function CarCalculator() {
       <main className="max-w-4xl mx-auto px-4 py-6 space-y-6">
         <TabSelector tabs={CAR_TABS} active={carType} onChange={handleCarChange} />
 
-        {/* 구매 방식 & 중고 */}
+        {/* 구매 방식 */}
         <div className="card p-5 space-y-4">
           <div className="space-y-2">
             <p className="text-sm font-medium text-gray-700 dark:text-gray-300">구매 방식</p>
@@ -210,7 +204,7 @@ export default function CarCalculator() {
               <p className="text-xs text-amber-600 dark:text-amber-400">💰 할부 금리 4.5% 적용 → 이자 총 {formatManwon(result.loanInterestTotal)} 추가</p>
             )}
           </div>
-          <CheckOption id="used-car" label="중고차 구매 (3년식)" description={`신차 대비 약 30% 할인된 ${formatManwon(Math.round(custom.price * 0.7))}으로 계산`} checked={isUsed} onChange={setIsUsed} />
+          <p className="text-xs text-gray-400">💡 중고차 구매 시: 상세 설정에서 차량 가격을 직접 낮춰서 입력하세요.</p>
         </div>
 
         {/* 슬라이더 */}
@@ -238,7 +232,7 @@ export default function CarCalculator() {
 
         {/* 핵심 결과 */}
         <div className="card p-6 bg-gradient-to-br from-rose-50 to-amber-50 dark:from-rose-950/20 dark:to-amber-950/20 border-rose-200 dark:border-rose-800/50">
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">{isUsed ? "중고차" : "신차"} 소유 시 ({years}년 후 매도 가정)</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">차량 소유 시 ({years}년 후 매도 가정)</p>
           <p className="text-3xl md:text-4xl font-bold text-rose-600 dark:text-rose-400">월 {result.carMonthly.toLocaleString()}만원</p>
           <p className="text-sm text-gray-500 mt-1">{years}년 총 {formatManwon(result.carTotal)} (중고매도 {formatManwon(result.residualValue)} 차감 반영)</p>
         </div>
@@ -290,7 +284,7 @@ export default function CarCalculator() {
         <div className="card p-5 space-y-3">
           <p className="section-title">🧾 자차 비용 분해</p>
           <div className="grid grid-cols-2 gap-2 text-sm">
-            <div className="flex justify-between p-2 bg-gray-50 dark:bg-gray-800/50 rounded-lg"><span className="text-gray-600 dark:text-gray-400">취득세 (7%)</span><span>{formatManwon(Math.round((isUsed ? custom.price * 0.7 : custom.price) * 0.07))}</span></div>
+            <div className="flex justify-between p-2 bg-gray-50 dark:bg-gray-800/50 rounded-lg"><span className="text-gray-600 dark:text-gray-400">취득세 (7%)</span><span>{formatManwon(Math.round(custom.price * 0.07))}</span></div>
             {result.loanInterestTotal > 0 && <div className="flex justify-between p-2 bg-gray-50 dark:bg-gray-800/50 rounded-lg"><span className="text-gray-600 dark:text-gray-400">할부 이자</span><span className="text-amber-600">{formatManwon(result.loanInterestTotal)}</span></div>}
             <div className="flex justify-between p-2 bg-gray-50 dark:bg-gray-800/50 rounded-lg"><span className="text-gray-600 dark:text-gray-400">감가상각</span><span>{formatManwon(result.depreciation)}</span></div>
             <div className="flex justify-between p-2 bg-gray-50 dark:bg-gray-800/50 rounded-lg"><span className="text-gray-600 dark:text-gray-400">유류비</span><span>{formatManwon(result.fuelTotal)}</span></div>
@@ -345,8 +339,8 @@ export default function CarCalculator() {
           title={`🚗 ${custom.label} ${years}년 소유 비용`}
           footerMessage="차가 주는 자유와 편의가 이 비용보다 크다면, 그건 당신의 라이프스타일에 맞는 합리적 선택입니다.">
           <div className="space-y-2">
-            <div className="flex justify-between"><span>{isUsed ? "중고차" : "신차"} 가격</span><span>{formatManwon(isUsed ? Math.round(custom.price * 0.7) : custom.price)}</span></div>
-            <div className="flex justify-between"><span>취득세</span><span>{formatManwon(Math.round((isUsed ? custom.price * 0.7 : custom.price) * 0.07))}</span></div>
+            <div className="flex justify-between"><span>차량 가격</span><span>{formatManwon(custom.price)}</span></div>
+            <div className="flex justify-between"><span>취득세</span><span>{formatManwon(Math.round(custom.price * 0.07))}</span></div>
             {result.loanInterestTotal > 0 && <div className="flex justify-between"><span>할부 이자</span><span>{formatManwon(result.loanInterestTotal)}</span></div>}
             <div className="flex justify-between"><span>감가상각</span><span>{formatManwon(result.depreciation)}</span></div>
             <div className="flex justify-between"><span>유류비</span><span>{formatManwon(result.fuelTotal)}</span></div>
