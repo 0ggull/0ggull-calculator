@@ -117,8 +117,12 @@ function calculate(
   const taxiCostPerKm = Math.round(taxiCostForKm(annualKm, avgTripKm) / annualKm);
 
   // 현실적 대안
-  // 현실적 대안: 주행거리 비례 (연 1.5만km 기준 월 41만원)
-  const realisticMonthly = Math.round(41 * (annualKm / 15000));
+  // 현실적 대안: 대중교통 정기권 + 택시(주행거리 10%) + 쏘카 월 2회
+  const monthlyTransport = 5.5; // 대중교통 정기권 (고정)
+  const taxiShareKm = annualKm * 0.10; // 연간 주행거리의 10%만 택시로 (비/회식/급한 때)
+  const monthlyTaxiAlt = Math.round(taxiCostForKm(taxiShareKm, avgTripKm) / 10000 / 12);
+  const monthlySocar = 15; // 쏘카 월 2회 (고정)
+  const realisticMonthly = Math.round(monthlyTransport + monthlyTaxiAlt + monthlySocar);
   const realisticTotal = realisticMonthly * years * 12;
 
   const savings = monthlyCarCost - realisticMonthly;
@@ -259,7 +263,7 @@ export default function CarCalculator() {
         {/* 비교 카드 */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <ResultCard icon={<Car className="w-5 h-5" />} label="100% 택시 (충격요법)" value={`월 ${result.taxiOnlyMonthly.toLocaleString()}만원`} sublabel={`평균 ${avgTripKm}km씩, 연 ${(annualKm / 10000).toFixed(1)}만km`} accent="amber" />
-          <ResultCard icon={<Bus className="w-5 h-5" />} label="현실적 대안 (대중교통+택시+쏘카)" value={`월 ${result.realisticMonthly}만원`} sublabel={`연 ${(annualKm/10000).toFixed(1)}만km 기준 비례 산출`} accent="green" />
+          <ResultCard icon={<Bus className="w-5 h-5" />} label="현실적 대안 (대중교통+택시+쏘카)" value={`월 ${result.realisticMonthly}만원`} sublabel="정기권 5.5 + 택시(10%) + 쏘카 월2회" accent="green" />
         </div>
 
         {/* 절약 & 기회비용 */}

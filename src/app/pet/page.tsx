@@ -65,10 +65,11 @@ const EXTRAS: ExtraOpt[] = [
 ];
 
 // ─── 계산 로직 ───────────────────────────────────────────
-function calculate(preset: PetPreset, enabledExtras: string[], petType: PetType) {
+function calculate(preset: PetPreset, enabledExtras: string[], petType: PetType, hasInsurance: boolean, inflationRate: number) {
   const { lifespan } = preset;
   const initial = preset.initialVaccination + preset.neutering + preset.initialSupplies;
-  const monthlyBase = preset.monthlyFood + preset.monthlyParasite + preset.monthlyGrooming + preset.monthlySupplies + preset.monthlyInsurance;
+  // 보험 미가입 시 보험료 제외
+  const monthlyBase = preset.monthlyFood + preset.monthlyParasite + preset.monthlyGrooming + preset.monthlySupplies + (hasInsurance ? preset.monthlyInsurance : 0);
   const annualBase = monthlyBase * 12;
 
   const yearly: { age: number; costNom: number; costReal: number; cumNom: number; cumReal: number; sp500: number; nasdaq: number }[] = [];
@@ -78,7 +79,11 @@ function calculate(preset: PetPreset, enabledExtras: string[], petType: PetType)
   for (let age = 1; age <= lifespan; age++) {
     let cost = annualBase;
     if (age === 1) cost += initial;
-    if (age >= 8) cost += preset.annualVetAfter8;
+    // 8세 이후 병원비: 보험 가입 시 70% 환급 반영
+    if (age >= 8) {
+      const vetCost = preset.annualVetAfter8;
+      cost += hasInsurance ? vetCost * 0.3 : vetCost; // 보험 있으면 30%만 본인부담
+    }
     if (age === lifespan) cost += preset.funeralCost;
 
     for (const ext of EXTRAS) {
@@ -88,7 +93,7 @@ function calculate(preset: PetPreset, enabledExtras: string[], petType: PetType)
       if (ext.oneTime && ext.triggerAge && age === ext.triggerAge) cost += ext.oneTime;
     }
 
-    const inflFactor = Math.pow(1 + INFLATION_RATE, age - 1);
+    const inflFactor = Math.pow(1 + inflationRate, age - 1);
     const costReal = cost * inflFactor;
     cumNom += cost;
     cumReal += costReal;
@@ -109,6 +114,8 @@ function calculate(preset: PetPreset, enabledExtras: string[], petType: PetType)
 export default function PetCalculator() {
   const [petType, setPetType] = useState<PetType>("small_dog");
   const [enabledExtras, setEnabledExtras] = useState<string[]>(["patella"]);
+  const [hasInsurance, setHasInsurance] = useState(true);
+  const [inflationRate, setInflationRate] = useState(2.5);
   const [showReceipt, setShowReceipt] = useState(false);
 
   // 사용자 커스텀 가능한 프리셋 (탭 변경 시 리셋)
@@ -124,7 +131,7 @@ export default function PetCalculator() {
     setEnabledExtras(defaultExtras);
   };
 
-  const result = useMemo(() => calculate(custom, enabledExtras, petType), [custom, enabledExtras, petType]);
+  const result = useMemo(() => calculate(custom, enabledExtras, petType, hasInsurance, inflationRate / 100), [custom, enabledExtras, petType, hasInsurance, inflationRate]);
 
   const chartData = result.yearly.map((y) => ({
     name: `${y.age}세`,
@@ -143,9 +150,20 @@ export default function PetCalculator() {
         {/* 동물 타입 선택 */}
         <TabSelector tabs={PET_TABS} active={petType} onChange={handlePetChange} />
 
-        {/* 수명 설정 */}
-        <div className="card p-5">
+        {/* 수명 & 물가 설정 */}
+        <div className="card p-5 space-y-5">
           <Slider label="예상 수명" value={custom.lifespan} min={5} max={20} unit="년" onChange={(v) => setCustom({ ...custom, lifespan: v })} />
+          <Slider label="물가상승률" value={inflationRate} min={0} max={5} step={0.5} onChange={setInflationRate} formatDisplay={(v) => `연 ${v.toFixed(1)}%`} />
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">🛡️ 펫보험 가입</p>
+              <p className="text-xs text-gray-400">가입 시 8세+ 병원비 70% 환급, 월 보험료 부담</p>
+            </div>
+            <button onClick={() => setHasInsurance(!hasInsurance)}
+              className={`w-12 h-6 rounded-full transition-colors duration-200 ${hasInsurance ? "bg-brand-500" : "bg-gray-300 dark:bg-gray-600"}`}>
+              <div className={`w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${hasInsurance ? "translate-x-6" : "translate-x-0.5"}`} />
+            </button>
+          </div>
         </div>
 
         {/* 상세 비용 입력 (접이식) */}

@@ -7,6 +7,7 @@ import {
 import { Baby, TrendingUp, Receipt, BookOpen, AlertTriangle, Shield } from "lucide-react";
 import Header from "@/components/ui/Header";
 import TabSelector from "@/components/ui/TabSelector";
+import Slider from "@/components/ui/Slider";
 import ResultCard from "@/components/ui/ResultCard";
 import ReceiptModal from "@/components/ui/ReceiptModal";
 import DisclaimerBanner from "@/components/ui/DisclaimerBanner";
@@ -82,7 +83,7 @@ interface ChildResult {
   endAge: number; monthlyAvg: number;
 }
 
-function calculate(eduStyle: EduStyle, gender: Gender, region: Region, uniType: "private" | "national"): ChildResult {
+function calculate(eduStyle: EduStyle, gender: Gender, region: Region, uniType: "private" | "national", inflRate: number): ChildResult {
   const regionMult = REGION_MULTIPLIER[region];
   const endAge = gender === "male" ? 26 : 22;
   const yearly: YearData[] = [];
@@ -124,7 +125,7 @@ function calculate(eduStyle: EduStyle, gender: Gender, region: Region, uniType: 
 
     totalGovSupport += govAnnual;
 
-    const inflFactor = Math.pow(1 + INFLATION_RATE, age);
+    const inflFactor = Math.pow(1 + inflRate, age);
     const costReal = annualCost * inflFactor;
     cumNom += annualCost;
     cumReal += costReal;
@@ -161,9 +162,10 @@ export default function ChildCalculator() {
   const [gender, setGender] = useState<Gender>("male");
   const [region, setRegion] = useState<Region>("metro");
   const [uniType, setUniType] = useState<"private" | "national">("private");
+  const [inflationRate, setInflationRate] = useState(2.5);
   const [showReceipt, setShowReceipt] = useState(false);
 
-  const result = useMemo(() => calculate(eduStyle, gender, region, uniType), [eduStyle, gender, region, uniType]);
+  const result = useMemo(() => calculate(eduStyle, gender, region, uniType, inflationRate / 100), [eduStyle, gender, region, uniType, inflationRate]);
 
   const chartData = result.yearly.map((y) => ({
     name: `${y.age}세`, "누적 지출": y.cumNom, "S&P500": y.sp500, "나스닥": y.nasdaq,
@@ -197,6 +199,11 @@ export default function ChildCalculator() {
             className={`flex-1 py-2.5 rounded-xl text-sm font-medium border transition-all ${uniType === "national" ? "bg-brand-50 dark:bg-brand-900/40 border-brand-300 dark:border-brand-600 text-brand-700 dark:text-brand-200" : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400"}`}>
             🏛️ 국립대 (연 450만)
           </button>
+        </div>
+
+        {/* 물가상승률 */}
+        <div className="card p-5">
+          <Slider label="물가상승률" value={inflationRate} min={0} max={5} step={0.5} onChange={setInflationRate} formatDisplay={(v) => `연 ${v.toFixed(1)}%`} />
         </div>
 
         {/* 핵심 결과 */}
