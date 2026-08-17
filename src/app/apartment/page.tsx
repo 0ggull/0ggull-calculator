@@ -188,7 +188,7 @@ function calculateWithOverrides(
   buyPrice: number, loanAmount: number, loanRate: number,
   holdYears: number, housing: HousingCount, interiorCost: number,
   annualPropertyTax: number, loanType: LoanType,
-  jeonseRatio: number, conversionRate: number, isResiding: boolean,
+  savedRentMonthlyInput: number, isResiding: boolean,
   acquisitionTax: number, legalFee: number, buyBroker: number,
   expectedSellPrice: number
 ): AptResult {
@@ -205,14 +205,9 @@ function calculateWithOverrides(
   const equity = buyPrice - loanAmount + acquisitionTax + legalFee + buyBroker + interiorCost;
   const opportunityCost = Math.round(equity * (Math.pow(1 + DEPOSIT_RATE, holdYears) - 1));
 
-  // 주거비 절약 (실거주 시)
-  let savedRent = 0;
-  let savedRentMonthly = 0;
-  if (isResiding) {
-    const jeonseValue = buyPrice * jeonseRatio;
-    savedRentMonthly = Math.round((jeonseValue * conversionRate) / 12);
-    savedRent = savedRentMonthly * holdYears * 12;
-  }
+  // 주거비 절약
+  const savedRentMonthly = isResiding ? savedRentMonthlyInput : 0;
+  const savedRent = savedRentMonthly * holdYears * 12;
 
   // ─── 매도가 기준 순이익 계산 ───
   const sellBrokerForExpected = calcBrokerFee(expectedSellPrice);
@@ -286,9 +281,20 @@ export default function ApartmentCalculator() {
   const [annualPropertyTax, setAnnualPropertyTax] = useState<number | null>(null); // null이면 자동계산
   const [loanType, setLoanType] = useState<LoanType>("interest_only");
   const [isResiding, setIsResiding] = useState(true);
-  const [jeonseRatio, setJeonseRatio] = useState(55);
-  const [conversionRate, setConversionRate] = useState(4.5);
+  const [rentType, setRentType] = useState<"jeonse" | "monthly">("jeonse");
+  const [customJeonseDeposit, setCustomJeonseDeposit] = useState<number | null>(null);
+  const [customMonthlyDeposit, setCustomMonthlyDeposit] = useState<number | null>(null);
+  const [customMonthlyRent, setCustomMonthlyRent] = useState<number | null>(null);
   const [showReceipt, setShowReceipt] = useState(false);
+
+  // 매수가 기준 자동 산출
+  const autoJeonseDeposit = Math.round(buyPrice * 0.55); // 전세가율 55%
+  const autoMonthlyDeposit = Math.round(buyPrice * 0.55 * 0.3); // 전세금의 30%를 보증금으로
+  const autoMonthlyRent = Math.round((buyPrice * 0.55 * 0.7) * 0.045 / 12); // 나머지 70%를 월세 전환 (4.5%)
+
+  const jeonseDeposit = customJeonseDeposit ?? autoJeonseDeposit;
+  const monthlyDeposit = customMonthlyDeposit ?? autoMonthlyDeposit;
+  const monthlyRent = customMonthlyRent ?? autoMonthlyRent;
 
   // 사용자 수정 가능한 비용 (기본값은 자동 계산)
   const [customAcqTax, setCustomAcqTax] = useState<number | null>(null);
@@ -308,9 +314,16 @@ export default function ApartmentCalculator() {
   const effectiveBuyBroker = customBuyBroker ?? autoBuyBroker;
   const effectivePropertyTax = annualPropertyTax ?? autoPropertyTax;
 
+  // 절약 주거비 계산 (직접)
+  const savedRentMonthlyCalc = isResiding
+    ? (rentType === "jeonse"
+      ? Math.round((jeonseDeposit * 0.045) / 12) // 전세금의 연 4.5% ÷ 12 = 월세 환산
+      : monthlyRent) // 월세는 그대로
+    : 0;
+
   const result = useMemo(
-    () => calculateWithOverrides(buyPrice, loanAmount, loanRate / 100, holdYears, housing, interiorCost, effectivePropertyTax, loanType, jeonseRatio / 100, conversionRate / 100, isResiding, effectiveAcqTax, effectiveLegalFee, effectiveBuyBroker, expectedSellPrice),
-    [buyPrice, loanAmount, loanRate, holdYears, housing, interiorCost, effectivePropertyTax, loanType, jeonseRatio, conversionRate, isResiding, effectiveAcqTax, effectiveLegalFee, effectiveBuyBroker, expectedSellPrice]
+    () => calculateWithOverrides(buyPrice, loanAmount, loanRate / 100, holdYears, housing, interiorCost, effectivePropertyTax, loanType, savedRentMonthlyCalc, isResiding, effectiveAcqTax, effectiveLegalFee, effectiveBuyBroker, expectedSellPrice),
+    [buyPrice, loanAmount, loanRate, holdYears, housing, interiorCost, effectivePropertyTax, loanType, savedRentMonthlyCalc, isResiding, effectiveAcqTax, effectiveLegalFee, effectiveBuyBroker, expectedSellPrice]
   );
 
   const costBreakdown = [
@@ -335,7 +348,7 @@ export default function ApartmentCalculator() {
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-700 dark:text-gray-300">매수가</label>
             <div className="flex items-center gap-3">
-              <input type="number" value={buyPrice} onChange={(e) => setBuyPrice(Math.max(1000, Number(e.target.value) || 0))} className="input-field flex-1" step={1000} />
+              <input type="number" value={buyPrice} onChange={(e) => setBuyPrice(Number(e.target.value) || 0)} className="input-field flex-1" step={1000} />
               <span className="text-sm text-gray-500 shrink-0">{formatManwon(buyPrice)}</span>
             </div>
           </div>
@@ -393,7 +406,7 @@ export default function ApartmentCalculator() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">🏡 실거주 여부</p>
-              <p className="text-xs text-gray-400">거주 시 전세/월세 안 내는 주거비 절약 반영</p>
+              <p className="text-xs text-gray-400">살면서 아끼는 주거비를 반영합니다</p>
             </div>
             <button onClick={() => setIsResiding(!isResiding)}
               className={`w-12 h-6 rounded-full transition-colors duration-200 ${isResiding ? "bg-brand-500" : "bg-gray-300 dark:bg-gray-600"}`}>
@@ -401,16 +414,42 @@ export default function ApartmentCalculator() {
             </button>
           </div>
           {isResiding && (
-            <div className="grid grid-cols-2 gap-3 pt-2 border-t border-gray-100 dark:border-gray-800">
-              <div className="space-y-1">
-                <label className="text-xs text-gray-500">전세가율 (%)</label>
-                <input type="number" value={jeonseRatio} onChange={(e) => setJeonseRatio(Number(e.target.value) || 50)} className="input-field" step={5} />
+            <div className="space-y-3 pt-2 border-t border-gray-100 dark:border-gray-800">
+              <p className="text-xs text-gray-500">이 집을 안 샀으면 어떻게 살았을지 선택하세요</p>
+              <div className="flex gap-2">
+                <button onClick={() => setRentType("jeonse")}
+                  className={`flex-1 py-2 rounded-xl text-xs font-medium border transition-all ${rentType === "jeonse" ? "bg-brand-50 dark:bg-brand-900/40 border-brand-300 dark:border-brand-600 text-brand-700 dark:text-brand-200" : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400"}`}>
+                  전세로 살았을 것
+                </button>
+                <button onClick={() => setRentType("monthly")}
+                  className={`flex-1 py-2 rounded-xl text-xs font-medium border transition-all ${rentType === "monthly" ? "bg-brand-50 dark:bg-brand-900/40 border-brand-300 dark:border-brand-600 text-brand-700 dark:text-brand-200" : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400"}`}>
+                  월세로 살았을 것
+                </button>
               </div>
-              <div className="space-y-1">
-                <label className="text-xs text-gray-500">월세 전환이율 (%)</label>
-                <input type="number" value={conversionRate} onChange={(e) => setConversionRate(Number(e.target.value) || 4)} className="input-field" step={0.5} />
-              </div>
-              <div className="col-span-2 p-3 bg-emerald-50 dark:bg-emerald-950/30 rounded-xl">
+              {rentType === "jeonse" ? (
+                <div className="space-y-2">
+                  <div className="space-y-1">
+                    <label className="text-xs text-gray-500">전세금 (만원)</label>
+                    <div className="flex items-center gap-2">
+                      <input type="number" value={jeonseDeposit} onChange={(e) => setCustomJeonseDeposit(Number(e.target.value) || 0)} className="input-field flex-1" step={1000} />
+                      <span className="text-xs text-gray-400 shrink-0">{formatManwon(jeonseDeposit)}</span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-400">→ 전세 살았으면 이 돈이 묶여있었을 것. 대신 내 집 사서 월세를 안 내는 효과.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs text-gray-500">보증금 (만원)</label>
+                    <input type="number" value={monthlyDeposit} onChange={(e) => setCustomMonthlyDeposit(Number(e.target.value) || 0)} className="input-field" step={1000} />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs text-gray-500">월세 (만원)</label>
+                    <input type="number" value={monthlyRent} onChange={(e) => setCustomMonthlyRent(Number(e.target.value) || 0)} className="input-field" step={10} />
+                  </div>
+                </div>
+              )}
+              <div className="p-3 bg-emerald-50 dark:bg-emerald-950/30 rounded-xl">
                 <p className="text-xs text-gray-600 dark:text-gray-400">내 집 거주로 절약되는 주거비</p>
                 <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">월 {result.savedRentMonthly.toLocaleString()}만원 ({holdYears}년 총 {formatManwon(result.savedRent)})</p>
               </div>
