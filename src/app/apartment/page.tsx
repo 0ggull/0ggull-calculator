@@ -144,19 +144,44 @@ interface AptResult {
   totalSunkCost: number;
   samePriceLoss: number;
   opportunityCost: number;
-  savedRent: number;          // 주거비 절약 총액
-  savedRentMonthly: number;   // 월 절약 주거비
-  netBepSellPrice: number;    // 주거비 절약 반영한 실질 BEP
+  savedRent: number;
+  savedRentMonthly: number;
+  netBepSellPrice: number;
   netBepGainPercent: number;
+  // 매도가 기준 분석
+  sellProfit: number;           // 매도 시 순이익 (매도가 입력 시)
+  sellProfitVsJeonse: number;   // 전세 대비 이득/손해
+  jeonseWouldHaveEarned: number; // 전세 살면서 투자했을 때 수익
+  annualPropertyTaxAuto: number; // 자동 계산된 재산세
 }
 
-function calculate(
-  buyPrice: number, loanAmount: number, loanRate: number,
-  holdYears: number, housing: HousingCount, interiorCost: number,
-  annualPropertyTax: number, loanType: LoanType,
-  jeonseRatio: number, conversionRate: number, isResiding: boolean
-): AptResult {
-  return calculateWithOverrides(buyPrice, loanAmount, loanRate, holdYears, housing, interiorCost, annualPropertyTax, loanType, jeonseRatio, conversionRate, isResiding, calcAcquisitionTax(buyPrice, housing), Math.round(buyPrice * 0.002), calcBrokerFee(buyPrice));
+// 재산세+종부세 자동 계산 (연간, 만원)
+function calcAnnualPropertyTax(buyPrice: number, housing: HousingCount): number {
+  // 공시가격 = 시세 × 현실화율 약 69%
+  const officialPrice = buyPrice * 0.69;
+  // 재산세 과세표준 = 공시가격 × 공정시장가액비율 60%
+  const taxBase = officialPrice * 0.60;
+
+  // 재산세 (누진)
+  let propertyTax = 0;
+  if (taxBase <= 6000) propertyTax = taxBase * 0.001;
+  else if (taxBase <= 15000) propertyTax = 6 + (taxBase - 6000) * 0.0015;
+  else if (taxBase <= 30000) propertyTax = 6 + 13.5 + (taxBase - 15000) * 0.0025;
+  else propertyTax = 6 + 13.5 + 37.5 + (taxBase - 30000) * 0.004;
+
+  // 도시지역분 (재산세의 약 20%) + 지방교육세 (재산세의 20%)
+  propertyTax = propertyTax * 1.4;
+
+  // 종부세 (1주택: 공시가 12억 초과분, 다주택: 6억 초과분)
+  let jongbuTax = 0;
+  const jongbuThreshold = housing === "single" ? 120000 : 60000; // 만원
+  if (officialPrice > jongbuThreshold) {
+    const jongbuBase = (officialPrice - jongbuThreshold) * 0.60; // 공정시장가액비율
+    // 세율 0.5~2.7% (구간별, 단순화하여 평균 0.7% 적용)
+    jongbuTax = jongbuBase * 0.007;
+  }
+
+  return Math.round(propertyTax + jongbuTax);
 }
 
 function calculateWithOverrides(
@@ -164,8 +189,10 @@ function calculateWithOverrides(
   holdYears: number, housing: HousingCount, interiorCost: number,
   annualPropertyTax: number, loanType: LoanType,
   jeonseRatio: number, conversionRate: number, isResiding: boolean,
-  acquisitionTax: number, legalFee: number, buyBroker: number
+  acquisitionTax: number, legalFee: number, buyBroker: number,
+  expectedSellPrice: number
 ): AptResult {
+  const annualPropertyTaxAuto = calcAnnualPropertyTax(buyPrice, housing);
 
   // 대출이자
   const totalInterest = loanType === "amortizing"
@@ -186,6 +213,17 @@ function calculateWithOverrides(
     savedRentMonthly = Math.round((jeonseValue * conversionRate) / 12);
     savedRent = savedRentMonthly * holdYears * 12;
   }
+
+  // ─── 매도가 기준 순이익 계산 ───
+  const sellBrokerForExpected = calcBrokerFee(expectedSellPrice);
+  const cgtForExpected = calcCapitalGainsTax(buyPrice, expectedSellPrice, holdYears, housing, interiorCost);
+  const totalCostsForSell = acquisitionTax + legalFee + buyBroker + totalInterest + totalPropertyTax + sellBrokerForExpected + cgtForExpected + interiorCost;
+  const sellProfit = expectedSellPrice - buyPrice - totalCostsForSell + savedRent;
+
+  // ─── 전세 대안 비교 ───
+  // 전세 살았다면: 자기자본을 예금에 넣고 이자 수익 + 전세보증금은 돌려받음
+  const jeonseWouldHaveEarned = opportunityCost; // 자기자본 예금 이자
+  const sellProfitVsJeonse = sellProfit - jeonseWouldHaveEarned;
 
   // BEP 계산 (이분법)
   const roughSunk = acquisitionTax + legalFee + buyBroker + totalInterest + totalPropertyTax + interiorCost - savedRent;
@@ -233,6 +271,7 @@ function calculateWithOverrides(
     sellBroker, capitalGainsTax, deductibleExpense: interiorCost,
     bepSellPrice, bepGainPercent, totalSunkCost, samePriceLoss, opportunityCost,
     savedRent, savedRentMonthly, netBepSellPrice, netBepGainPercent,
+    sellProfit, sellProfitVsJeonse, jeonseWouldHaveEarned, annualPropertyTaxAuto,
   };
 }
 
@@ -244,7 +283,7 @@ export default function ApartmentCalculator() {
   const [holdYears, setHoldYears] = useState(3);
   const [housing, setHousing] = useState<HousingCount>("single");
   const [interiorCost, setInteriorCost] = useState(2000);
-  const [annualPropertyTax, setAnnualPropertyTax] = useState(200);
+  const [annualPropertyTax, setAnnualPropertyTax] = useState<number | null>(null); // null이면 자동계산
   const [loanType, setLoanType] = useState<LoanType>("interest_only");
   const [isResiding, setIsResiding] = useState(true);
   const [jeonseRatio, setJeonseRatio] = useState(55);
@@ -255,20 +294,23 @@ export default function ApartmentCalculator() {
   const [customAcqTax, setCustomAcqTax] = useState<number | null>(null);
   const [customLegalFee, setCustomLegalFee] = useState<number | null>(null);
   const [customBuyBroker, setCustomBuyBroker] = useState<number | null>(null);
+  const [expectedSellPrice, setExpectedSellPrice] = useState(140000); // 매도 예상가 (기본: 매수가+20%)
 
   // 자동 계산된 기본값
   const autoAcqTax = calcAcquisitionTax(buyPrice, housing);
   const autoLegalFee = Math.round(buyPrice * 0.002);
   const autoBuyBroker = calcBrokerFee(buyPrice);
+  const autoPropertyTax = calcAnnualPropertyTax(buyPrice, housing);
 
   // 실제 사용값 (사용자 수정값 우선, 없으면 자동값)
   const effectiveAcqTax = customAcqTax ?? autoAcqTax;
   const effectiveLegalFee = customLegalFee ?? autoLegalFee;
   const effectiveBuyBroker = customBuyBroker ?? autoBuyBroker;
+  const effectivePropertyTax = annualPropertyTax ?? autoPropertyTax;
 
   const result = useMemo(
-    () => calculateWithOverrides(buyPrice, loanAmount, loanRate / 100, holdYears, housing, interiorCost, annualPropertyTax, loanType, jeonseRatio / 100, conversionRate / 100, isResiding, effectiveAcqTax, effectiveLegalFee, effectiveBuyBroker),
-    [buyPrice, loanAmount, loanRate, holdYears, housing, interiorCost, annualPropertyTax, loanType, jeonseRatio, conversionRate, isResiding, effectiveAcqTax, effectiveLegalFee, effectiveBuyBroker]
+    () => calculateWithOverrides(buyPrice, loanAmount, loanRate / 100, holdYears, housing, interiorCost, effectivePropertyTax, loanType, jeonseRatio / 100, conversionRate / 100, isResiding, effectiveAcqTax, effectiveLegalFee, effectiveBuyBroker, expectedSellPrice),
+    [buyPrice, loanAmount, loanRate, holdYears, housing, interiorCost, effectivePropertyTax, loanType, jeonseRatio, conversionRate, isResiding, effectiveAcqTax, effectiveLegalFee, effectiveBuyBroker, expectedSellPrice]
   );
 
   const costBreakdown = [
@@ -296,6 +338,14 @@ export default function ApartmentCalculator() {
               <input type="number" value={buyPrice} onChange={(e) => setBuyPrice(Math.max(1000, Number(e.target.value) || 0))} className="input-field flex-1" step={1000} />
               <span className="text-sm text-gray-500 shrink-0">{formatManwon(buyPrice)}</span>
             </div>
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">매도 예상가 (팔 가격)</label>
+            <div className="flex items-center gap-3">
+              <input type="number" value={expectedSellPrice} onChange={(e) => setExpectedSellPrice(Math.max(0, Number(e.target.value) || 0))} className="input-field flex-1" step={1000} />
+              <span className="text-sm text-gray-500 shrink-0">{formatManwon(expectedSellPrice)}</span>
+            </div>
+            <p className="text-xs text-gray-400">매수가 대비 {expectedSellPrice >= buyPrice ? "+" : ""}{formatPercent(((expectedSellPrice - buyPrice) / buyPrice) * 100)}</p>
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-700 dark:text-gray-300">대출 금액</label>
@@ -378,10 +428,10 @@ export default function ApartmentCalculator() {
             <NumberInput label="법무사+채권 할인" value={effectiveLegalFee} onChange={(v) => setCustomLegalFee(v)} hint={`자동: ${autoLegalFee.toLocaleString()}만원`} />
             <NumberInput label="매수 중개보수" value={effectiveBuyBroker} onChange={(v) => setCustomBuyBroker(v)} hint={`자동: ${autoBuyBroker.toLocaleString()}만원`} />
             <NumberInput label="인테리어/자본적 지출" value={interiorCost} onChange={setInteriorCost} hint="양도세 경비 인정 항목" />
-            <NumberInput label="연간 재산세+종부세" value={annualPropertyTax} onChange={setAnnualPropertyTax} />
+            <NumberInput label="연간 재산세+종부세" value={effectivePropertyTax} onChange={(v) => setAnnualPropertyTax(v)} hint={`자동: ${autoPropertyTax.toLocaleString()}만원`} />
           </div>
           <div className="px-5 pb-4">
-            <button onClick={() => { setCustomAcqTax(null); setCustomLegalFee(null); setCustomBuyBroker(null); }}
+            <button onClick={() => { setCustomAcqTax(null); setCustomLegalFee(null); setCustomBuyBroker(null); setAnnualPropertyTax(null); }}
               className="text-xs text-brand-600 dark:text-brand-400 hover:underline">
               ↺ 자동 계산값으로 초기화
             </button>
@@ -398,6 +448,9 @@ export default function ApartmentCalculator() {
           <p className="text-sm text-gray-600 dark:text-gray-400">
             이상에 팔아야 본전 (매수가 대비 <span className="font-semibold text-amber-600">{formatPercent(result.bepGainPercent)}</span>)
           </p>
+          <p className="text-xs text-gray-400 pt-1 border-t border-sky-200 dark:border-sky-800/50">
+            {holdYears}년간 세금·이자·수수료로 {formatManwon(result.totalSunkCost)} 빠짐 = 매달 {Math.round(result.totalSunkCost / (holdYears * 12))}만원씩 사라지는 셈
+          </p>
           {isResiding && result.savedRent > 0 && (
             <div className="pt-2 border-t border-sky-200 dark:border-sky-800">
               <p className="text-xs text-gray-500">주거비 절약 반영 시 실질 BEP</p>
@@ -406,17 +459,31 @@ export default function ApartmentCalculator() {
           )}
         </div>
 
+        {/* 매도 시 순이익 분석 */}
+        <div className={`card p-6 space-y-2 ${result.sellProfit >= 0 ? "bg-gradient-to-br from-emerald-50 to-sky-50 dark:from-emerald-950/20 dark:to-sky-950/20 border-emerald-200 dark:border-emerald-800/50" : "bg-gradient-to-br from-rose-50 to-red-50 dark:from-rose-950/20 dark:to-red-950/20 border-rose-200 dark:border-rose-800/50"}`}>
+          <p className="text-sm text-gray-600 dark:text-gray-400">{formatManwon(expectedSellPrice)}에 매도하면 (세금·수수료 전부 제외 후)</p>
+          <p className={`text-3xl font-bold ${result.sellProfit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
+            {result.sellProfit >= 0 ? "+" : ""}{formatManwon(result.sellProfit)} {result.sellProfit >= 0 ? "이득" : "손해"}
+          </p>
+          {isResiding && <p className="text-xs text-gray-500">(주거비 절약 {formatManwon(result.savedRent)} 포함)</p>}
+        </div>
+
         {/* 전세 대안 비교 */}
         {isResiding && (
-          <div className="card p-5 bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-950/20 dark:to-purple-950/20 border-indigo-200 dark:border-indigo-800/50 space-y-2">
+          <div className={`card p-5 space-y-2 ${result.sellProfitVsJeonse >= 0 ? "bg-gradient-to-br from-sky-50 to-indigo-50 dark:from-sky-950/20 dark:to-indigo-950/20 border-sky-200 dark:border-sky-800/50" : "bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 border-amber-200 dark:border-amber-800/50"}`}>
             <div className="flex items-center gap-2">
               <Building className="w-5 h-5 text-indigo-500" />
-              <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">사지 않고 전세로 살았다면?</p>
+              <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">전세로 살면서 투자했다면?</p>
             </div>
-            <p className="text-xs text-gray-500">전세보증금 {formatManwon(Math.round(buyPrice * jeonseRatio / 100))}을 예금(연 {DEPOSIT_RATE * 100}%)에 넣는 대신 전세 거주</p>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              자기자본 {formatManwon(buyPrice - loanAmount)}을 {holdYears}년간 예금에 넣었다면: <span className="font-bold text-purple-600 dark:text-purple-400">+{formatManwon(result.opportunityCost)}</span> 이자 수익
-            </p>
+            <p className="text-xs text-gray-500">자기자본 {formatManwon(buyPrice - loanAmount + (customAcqTax ?? autoAcqTax))}을 예금(연 {DEPOSIT_RATE * 100}%)에 {holdYears}년</p>
+            <p className="text-sm text-gray-700 dark:text-gray-300">전세 대안 수익: <span className="font-bold text-purple-600 dark:text-purple-400">+{formatManwon(result.jeonseWouldHaveEarned)}</span></p>
+            <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
+              {result.sellProfitVsJeonse >= 0 ? (
+                <p className="text-sm font-medium text-sky-700 dark:text-sky-300">→ {formatManwon(expectedSellPrice)}에 팔면 매수가 전세보다 <span className="font-bold">+{formatManwon(result.sellProfitVsJeonse)}</span> 이득</p>
+              ) : (
+                <p className="text-sm font-medium text-amber-700 dark:text-amber-300">→ {formatManwon(expectedSellPrice)}에 팔면 전세가 <span className="font-bold">{formatManwon(Math.abs(result.sellProfitVsJeonse))}</span> 더 유리했음</p>
+              )}
+            </div>
           </div>
         )}
 

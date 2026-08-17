@@ -11,7 +11,7 @@ import Slider from "@/components/ui/Slider";
 import ResultCard from "@/components/ui/ResultCard";
 import ReceiptModal from "@/components/ui/ReceiptModal";
 import DisclaimerBanner from "@/components/ui/DisclaimerBanner";
-import { formatManwon, SP500_RATE, NASDAQ_RATE, INFLATION_RATE } from "@/lib/finance";
+import { formatManwon, SP500_RATE, NASDAQ_RATE } from "@/lib/finance";
 
 // ─── 타입 & 상수 ─────────────────────────────────────────
 type EduStyle = "frugal" | "average" | "intensive";
@@ -145,7 +145,6 @@ function calculate(eduStyle: EduStyle, gender: Gender, region: Region, uniType: 
     yearly.push({ age, phase: phase.label, costNom: Math.round(annualCost), costReal: Math.round(costReal), cumNom: Math.round(cumNom), cumReal: Math.round(cumReal), sp500: Math.round(sp500), nasdaq: Math.round(nasdaq) });
   }
 
-  const totalMonths = yearly.length * 12;
   const monthlyAvg = Math.round(cumNom / yearly.length / 12);
 
   return {
@@ -218,6 +217,9 @@ export default function ChildCalculator() {
           <p className="text-sm text-gray-500">
             물가상승 반영 시 <span className="font-semibold text-orange-600 dark:text-orange-400">{formatManwon(result.totalReal)}</span>
             {" · "}월평균 {result.monthlyAvg}만원
+          </p>
+          <p className="text-xs text-gray-400 pt-1 border-t border-amber-200 dark:border-amber-800/50">
+            = {result.endAge}년간 매달 월세 {result.monthlyAvg}만원짜리 방을 하나 더 내는 것 · 가장 비싼 {result.peakPhase} 시기엔 월 {result.peakMonthly}만원
           </p>
         </div>
 

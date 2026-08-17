@@ -39,6 +39,7 @@ export default function Slider({
           max={max}
           step={step}
           value={value}
+          aria-label={label}
           onChange={(e) => onChange(Number(e.target.value))}
           className="w-full h-2 rounded-full appearance-none cursor-pointer
                      bg-gray-200 dark:bg-gray-700

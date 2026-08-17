@@ -4,7 +4,7 @@ import { useState, useMemo } from "react";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from "recharts";
-import { Car, Bus, TrendingUp, Receipt } from "lucide-react";
+import { Car, TrendingUp, Receipt } from "lucide-react";
 import Header from "@/components/ui/Header";
 import TabSelector from "@/components/ui/TabSelector";
 import Slider from "@/components/ui/Slider";
@@ -52,6 +52,7 @@ const TAXI_PER_131M = 100;
 const TAXI_COST_PER_KM = TAXI_PER_131M / 0.131;
 
 function taxiCostForKm(totalKm: number, avgTripKm: number): number {
+  if (avgTripKm <= 0 || totalKm <= 0) return 0;
   const numTrips = totalKm / avgTripKm;
   const costPerTrip = TAXI_BASE_FARE + Math.max(0, avgTripKm - TAXI_BASE_DIST) * TAXI_COST_PER_KM;
   return numTrips * costPerTrip;
@@ -70,6 +71,7 @@ interface CalcResult {
   carMonthly: number; carTotal: number;
   taxiOnlyMonthly: number; taxiOnlyTotal: number;
   realisticMonthly: number; realisticTotal: number;
+  altTransportOnly: number; altWithTaxi: number; altWithRental: number;
   savings: number; sp500: number; nasdaq: number;
   yearlyData: { year: number; carCum: number; realisticCum: number; sp500: number; nasdaq: number }[];
   depreciation: number; fuelTotal: number; residualValue: number;
@@ -114,15 +116,24 @@ function calculate(
   // 택시
   const annualTaxiCost = taxiCostForKm(annualKm, avgTripKm) / 10000;
   const monthlyTaxi = annualTaxiCost / 12;
-  const taxiCostPerKm = Math.round(taxiCostForKm(annualKm, avgTripKm) / annualKm);
+  const taxiCostPerKm = avgTripKm > 0 ? Math.round(taxiCostForKm(annualKm, avgTripKm) / annualKm) : 0;
 
   // 현실적 대안
-  // 현실적 대안: 대중교통 정기권 + 택시(주행거리 10%) + 쏘카 월 2회
-  const monthlyTransport = 5.5; // 대중교통 정기권 (고정)
-  const taxiShareKm = annualKm * 0.10; // 연간 주행거리의 10%만 택시로 (비/회식/급한 때)
-  const monthlyTaxiAlt = Math.round(taxiCostForKm(taxiShareKm, avgTripKm) / 10000 / 12);
-  const monthlySocar = 15; // 쏘카 월 2회 (고정)
-  const realisticMonthly = Math.round(monthlyTransport + monthlyTaxiAlt + monthlySocar);
+  // ─── 현실적 대안 3가지 ───
+  // A. 풀 대중교통 (정기권만)
+  const altTransportOnly = 5.5; // 월 5.5만원 고정
+
+  // B. 대중교통 + 택시 (주행거리의 10%를 택시로)
+  const taxiShareKm = annualKm * 0.10;
+  const monthlyTaxiAlt = avgTripKm > 0 ? Math.round(taxiCostForKm(taxiShareKm, avgTripKm) / 10000 / 12) : 0;
+  const altWithTaxi = Math.round((5.5 + monthlyTaxiAlt) * 10) / 10;
+
+  // C. 대중교통 + 택시 + 렌트카 (주말 월 2회)
+  const monthlySocar = 15;
+  const altWithRental = Math.round((5.5 + monthlyTaxiAlt + monthlySocar) * 10) / 10;
+
+  // 메인 비교는 B (가장 현실적)
+  const realisticMonthly = Math.round(altWithTaxi);
   const realisticTotal = realisticMonthly * years * 12;
 
   const savings = monthlyCarCost - realisticMonthly;
@@ -157,6 +168,7 @@ function calculate(
     carMonthly: Math.round(monthlyCarCost * 10) / 10, carTotal: Math.round(totalCarCost),
     taxiOnlyMonthly: Math.round(monthlyTaxi * 10) / 10, taxiOnlyTotal: Math.round(annualTaxiCost * years),
     realisticMonthly, realisticTotal,
+    altTransportOnly, altWithTaxi, altWithRental,
     savings: Math.round(savings * 10) / 10, sp500: Math.round(sp500), nasdaq: Math.round(nasdaq),
     yearlyData, depreciation: Math.round(totalDep), fuelTotal: Math.round(annualFuel * years),
     residualValue: Math.round(residual), carCostPerKm, taxiCostPerKm, loanInterestTotal,
@@ -214,10 +226,15 @@ export default function CarCalculator() {
 
         {/* 슬라이더 */}
         <div className="card p-5 space-y-5">
-          <Slider label="보유 기간" value={years} min={1} max={10} unit="년" onChange={setYears} />
-          <Slider label="연간 주행거리" value={annualKm} min={5000} max={30000} step={1000} unit="km" onChange={setAnnualKm} formatDisplay={(v) => `${(v / 10000).toFixed(1)}만km`} />
+          <Slider label="보유 기간" value={years} min={1} max={20} unit="년" onChange={setYears} />
+          <Slider label="연간 주행거리" value={annualKm} min={5000} max={100000} step={1000} unit="km" onChange={setAnnualKm} formatDisplay={(v) => `${(v / 10000).toFixed(1)}만km`} />
           <Slider label="월 주차비/통행료" value={monthlyParking} min={0} max={30} unit="만원" onChange={setMonthlyParking} />
-          <Slider label="택시 평균 탑승거리" value={avgTripKm} min={2} max={15} step={1} unit="km" onChange={setAvgTripKm} formatDisplay={(v) => `${v}km/회`} />
+          <div>
+            <Slider label="택시 평균 탑승거리" value={avgTripKm} min={0} max={15} step={1} unit="km" onChange={setAvgTripKm} formatDisplay={(v) => v === 0 ? "택시 안 탐" : `${v}km/회`} />
+            {avgTripKm > 0 && (
+              <p className="text-xs text-gray-500 mt-1">→ 1회 택시비 약 {Math.round(4800 + Math.max(0, avgTripKm - 1.6) * 763).toLocaleString()}원 ({avgTripKm}km 기준)</p>
+            )}
+          </div>
         </div>
 
         {/* 상세 수정 */}
@@ -236,10 +253,13 @@ export default function CarCalculator() {
         </details>
 
         {/* 핵심 결과 */}
-        <div className="card p-6 bg-gradient-to-br from-rose-50 to-amber-50 dark:from-rose-950/20 dark:to-amber-950/20 border-rose-200 dark:border-rose-800/50">
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">차량 소유 시 ({years}년 후 매도 가정)</p>
+        <div className="card p-6 bg-gradient-to-br from-rose-50 to-amber-50 dark:from-rose-950/20 dark:to-amber-950/20 border-rose-200 dark:border-rose-800/50 space-y-2">
+          <p className="text-sm text-gray-600 dark:text-gray-400">차량 소유 시 ({years}년 후 중고 매도 가정)</p>
           <p className="text-3xl md:text-4xl font-bold text-rose-600 dark:text-rose-400">월 {result.carMonthly.toLocaleString()}만원</p>
-          <p className="text-sm text-gray-500 mt-1">{years}년 총 {formatManwon(result.carTotal)} (중고매도 {formatManwon(result.residualValue)} 차감 반영)</p>
+          <p className="text-sm text-gray-500">{years}년 총 {formatManwon(result.carTotal)} (매도 {formatManwon(result.residualValue)} 차감)</p>
+          <p className="text-xs text-gray-400 pt-1 border-t border-rose-100 dark:border-rose-900/50">
+            = 매달 월세 {Math.round(result.carMonthly)}만원짜리 방을 하나 더 내는 셈 · 하루 {Math.round(result.carMonthly * 10000 / 30).toLocaleString()}원
+          </p>
         </div>
 
         {/* km당 비용 비교 */}
@@ -260,10 +280,33 @@ export default function CarCalculator() {
           <p className="text-xs text-gray-400">* 택시: 기본요금 4,800원(1.6km) + 131m당 100원. 평균 {avgTripKm}km 탑승 가정.</p>
         </div>
 
-        {/* 비교 카드 */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <ResultCard icon={<Car className="w-5 h-5" />} label="100% 택시 (충격요법)" value={`월 ${result.taxiOnlyMonthly.toLocaleString()}만원`} sublabel={`평균 ${avgTripKm}km씩, 연 ${(annualKm / 10000).toFixed(1)}만km`} accent="amber" />
-          <ResultCard icon={<Bus className="w-5 h-5" />} label="현실적 대안 (대중교통+택시+쏘카)" value={`월 ${result.realisticMonthly}만원`} sublabel="정기권 5.5 + 택시(10%) + 쏘카 월2회" accent="green" />
+        {/* 비교 카드 - 3가지 대안 */}
+        <div className="card p-5 space-y-3">
+          <p className="section-title">🚌 차 없이 사는 대안 비교</p>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl">
+              <div>
+                <p className="text-sm font-medium text-gray-800 dark:text-gray-200">A. 풀 대중교통</p>
+                <p className="text-xs text-gray-500">정기권만 이용</p>
+              </div>
+              <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">월 {result.altTransportOnly}만</p>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-sky-50 dark:bg-sky-900/20 rounded-xl border-2 border-sky-200 dark:border-sky-800">
+              <div>
+                <p className="text-sm font-medium text-gray-800 dark:text-gray-200">B. 대중교통 + 택시</p>
+                <p className="text-xs text-gray-500">평소 대중교통, 비/회식 때 택시 (10%)</p>
+              </div>
+              <p className="text-lg font-bold text-sky-600 dark:text-sky-400">월 {result.altWithTaxi}만</p>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-purple-50 dark:bg-purple-900/20 rounded-xl">
+              <div>
+                <p className="text-sm font-medium text-gray-800 dark:text-gray-200">C. 대중교통 + 택시 + 렌트카</p>
+                <p className="text-xs text-gray-500">B + 주말 렌트카 월 2회 (15만원)</p>
+              </div>
+              <p className="text-lg font-bold text-purple-600 dark:text-purple-400">월 {result.altWithRental}만</p>
+            </div>
+          </div>
+          <p className="text-xs text-gray-400">* 절약 비교는 B안(대중교통+택시) 기준으로 계산됩니다</p>
         </div>
 
         {/* 절약 & 기회비용 */}

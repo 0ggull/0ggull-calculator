@@ -13,7 +13,7 @@ import ResultCard from "@/components/ui/ResultCard";
 import Slider from "@/components/ui/Slider";
 import ReceiptModal from "@/components/ui/ReceiptModal";
 import DisclaimerBanner from "@/components/ui/DisclaimerBanner";
-import { formatManwon, SP500_RATE, NASDAQ_RATE, INFLATION_RATE } from "@/lib/finance";
+import { formatManwon, SP500_RATE, NASDAQ_RATE } from "@/lib/finance";
 
 // ─── 타입 & 상수 ─────────────────────────────────────────
 type PetType = "small_dog" | "medium_dog" | "large_dog" | "cat";
@@ -211,6 +211,19 @@ export default function PetCalculator() {
               );
             })}
           </div>
+        </div>
+
+        {/* 핵심 결론 */}
+        <div className="card p-6 bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 border-amber-200 dark:border-amber-800/50 space-y-2">
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            {PET_TABS.find((t) => t.key === petType)?.emoji} {PET_TABS.find((t) => t.key === petType)?.label}을(를) {result.lifespan}년간 키우면
+          </p>
+          <p className="text-3xl md:text-4xl font-bold text-amber-600 dark:text-amber-400">
+            매달 {monthlyAvg}만원
+          </p>
+          <p className="text-sm text-gray-500">
+            = 매달 커피 {Math.round(monthlyAvg * 10000 / 5000)}잔 값 · {result.lifespan}년 총 {formatManwon(result.totalNom)}
+          </p>
         </div>
 
         {/* 결과 카드 */}
