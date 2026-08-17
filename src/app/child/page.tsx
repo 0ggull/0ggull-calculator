@@ -30,9 +30,9 @@ const GENDER_TABS = [
 ];
 
 const REGION_TABS = [
-  { key: "seoul", label: "서울/강남", emoji: "🏙️" },
-  { key: "metro", label: "수도권", emoji: "🌆" },
-  { key: "local", label: "지방", emoji: "🏡" },
+  { key: "seoul", label: "서울/강남", emoji: "🏙️", subtitle: "사교육 ×1.3" },
+  { key: "metro", label: "수도권", emoji: "🌆", subtitle: "기준 ×1.0" },
+  { key: "local", label: "지방", emoji: "🏡", subtitle: "사교육 ×0.75" },
 ];
 
 const REGION_MULTIPLIER: Record<Region, number> = {
@@ -188,6 +188,7 @@ export default function ChildCalculator() {
 
         {/* 지역 선택 */}
         <TabSelector tabs={REGION_TABS} active={region} onChange={(k) => setRegion(k as Region)} />
+        <p className="text-xs text-gray-400 -mt-4 px-1">* 지역별 학원비·생활비 차이 반영 (강남 수학학원 월 60만 vs 지방 25만 등)</p>
 
         {/* 대학 유형 */}
         <div className="flex gap-2">
@@ -239,8 +240,8 @@ export default function ChildCalculator() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <ResultCard icon={<AlertTriangle className="w-5 h-5" />} label="가장 비싼 시기" value={`월 ${result.peakMonthly.toLocaleString()}만원`} sublabel={`${result.peakPhase} · 사교육 적자 구간`} accent="red" />
           <ResultCard icon={<BookOpen className="w-5 h-5" />} label="정부 지원 총액 (0~6세)" value={formatManwon(result.totalGovSupport)} sublabel="부모급여+아동수당+보육료 합산" accent="green" />
-          <ResultCard icon={<TrendingUp className="w-5 h-5" />} label={`S&P500 기회비용 (${result.endAge}년)`} value={formatManwon(result.sp500Final)} sublabel="동일 금액 매월 적립 (연 8%)" accent="blue" />
-          <ResultCard icon={<TrendingUp className="w-5 h-5" />} label={`나스닥 기회비용 (${result.endAge}년)`} value={formatManwon(result.nasdaqFinal)} sublabel="동일 금액 매월 적립 (연 12%)" accent="purple" />
+          <ResultCard icon={<TrendingUp className="w-5 h-5" />} label={`S&P500 기회비용 (${result.endAge}년)`} value={formatManwon(result.sp500Final)} sublabel="양육비를 투자했다면 (연 8%)" accent="blue" />
+          <ResultCard icon={<TrendingUp className="w-5 h-5" />} label={`나스닥 기회비용 (${result.endAge}년)`} value={formatManwon(result.nasdaqFinal)} sublabel="양육비를 투자했다면 (연 12%)" accent="purple" />
         </div>
 
         {/* 연령별 월 지출 */}

@@ -247,14 +247,14 @@ export default function PetCalculator() {
             icon={<TrendingUp className="w-5 h-5" />}
             label="S&P500 적립 시 (연 8%)"
             value={formatManwon(result.sp500Final)}
-            sublabel="매월 동일 금액 적립 투자 가정"
+            sublabel="매달 쓸 돈을 투자했다면"
             accent="blue"
           />
           <ResultCard
             icon={<TrendingUp className="w-5 h-5" />}
             label="나스닥 적립 시 (연 12%)"
             value={formatManwon(result.nasdaqFinal)}
-            sublabel="매월 동일 금액 적립 투자 가정"
+            sublabel="매달 쓸 돈을 투자했다면"
             accent="purple"
           />
         </div>
