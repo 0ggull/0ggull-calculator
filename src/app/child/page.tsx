@@ -130,7 +130,8 @@ function calculate(eduStyle: EduStyle, gender: Gender, region: Region, uniType: 
     cumNom += annualCost;
     cumReal += costReal;
 
-    const monthlyInv = annualCost / 12;
+    // 실제 지출(인플레 반영) 기준으로 투자 적립
+    const monthlyInv = costReal / 12;
     for (let m = 0; m < 12; m++) {
       sp500 = sp500 * (1 + mSP) + monthlyInv;
       nasdaq = nasdaq * (1 + mNQ) + monthlyInv;
@@ -167,7 +168,7 @@ export default function ChildCalculator() {
   const result = useMemo(() => calculate(eduStyle, gender, region, uniType, inflationRate / 100), [eduStyle, gender, region, uniType, inflationRate]);
 
   const chartData = result.yearly.map((y) => ({
-    name: `${y.age}세`, "누적 지출": y.cumNom, "S&P500": y.sp500, "나스닥": y.nasdaq,
+    name: `${y.age}세`, "누적 지출": y.cumReal, "S&P500": y.sp500, "나스닥": y.nasdaq,
   }));
 
   const areaData = result.yearly.map((y) => ({
@@ -213,13 +214,13 @@ export default function ChildCalculator() {
               {gender === "male" ? "아들" : "딸"} 1명, {result.endAge}세 독립까지 총비용
             </p>
           </div>
-          <p className="text-3xl md:text-4xl font-bold text-amber-600 dark:text-amber-400">약 {formatManwon(result.totalNom)}</p>
+          <p className="text-3xl md:text-4xl font-bold text-amber-600 dark:text-amber-400">약 {formatManwon(result.totalReal)}</p>
           <p className="text-sm text-gray-500">
-            물가상승 반영 시 <span className="font-semibold text-orange-600 dark:text-orange-400">{formatManwon(result.totalReal)}</span>
-            {" · "}월평균 {result.monthlyAvg}만원
+            현재가치 기준 {formatManwon(result.totalNom)}
+            {" · "}월평균 {Math.round(result.totalReal / result.yearly.length / 12)}만원 (물가 연 {inflationRate}%)
           </p>
           <p className="text-xs text-gray-400 pt-1 border-t border-amber-200 dark:border-amber-800/50">
-            = {result.endAge}년간 매달 월세 {result.monthlyAvg}만원짜리 방을 하나 더 내는 것 · 가장 비싼 {result.peakPhase} 시기엔 월 {result.peakMonthly}만원
+            = {result.endAge}년간 실제 지갑에서 나가는 돈 · 가장 비싼 {result.peakPhase} 시기엔 월 {result.peakMonthly}만원+
           </p>
         </div>
 

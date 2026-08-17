@@ -348,14 +348,14 @@ export default function ApartmentCalculator() {
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-700 dark:text-gray-300">매수가</label>
             <div className="flex items-center gap-3">
-              <input type="number" value={buyPrice} onChange={(e) => setBuyPrice(Number(e.target.value) || 0)} className="input-field flex-1" step={1000} />
+              <input type="number" value={buyPrice || ""} onChange={(e) => setBuyPrice(Number(e.target.value) || 0)} className="input-field flex-1" step={1000} />
               <span className="text-sm text-gray-500 shrink-0">{formatManwon(buyPrice)}</span>
             </div>
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-700 dark:text-gray-300">매도 예상가 (팔 가격)</label>
             <div className="flex items-center gap-3">
-              <input type="number" value={expectedSellPrice} onChange={(e) => setExpectedSellPrice(Math.max(0, Number(e.target.value) || 0))} className="input-field flex-1" step={1000} />
+              <input type="number" value={expectedSellPrice || ""} onChange={(e) => setExpectedSellPrice(Number(e.target.value) || 0)} className="input-field flex-1" step={1000} />
               <span className="text-sm text-gray-500 shrink-0">{formatManwon(expectedSellPrice)}</span>
             </div>
             <p className="text-xs text-gray-400">매수가 대비 {expectedSellPrice >= buyPrice ? "+" : ""}{formatPercent(((expectedSellPrice - buyPrice) / buyPrice) * 100)}</p>
@@ -363,7 +363,7 @@ export default function ApartmentCalculator() {
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-700 dark:text-gray-300">대출 금액</label>
             <div className="flex items-center gap-3">
-              <input type="number" value={loanAmount} onChange={(e) => setLoanAmount(Math.max(0, Number(e.target.value) || 0))} className="input-field flex-1" step={1000} />
+              <input type="number" value={loanAmount || ""} onChange={(e) => setLoanAmount(Number(e.target.value) || 0)} className="input-field flex-1" step={1000} />
               <span className="text-sm text-gray-500 shrink-0">{formatManwon(loanAmount)}</span>
             </div>
           </div>
@@ -386,7 +386,7 @@ export default function ApartmentCalculator() {
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-700 dark:text-gray-300">보유 예정 기간</label>
             <div className="flex items-center gap-3">
-              <input type="number" value={holdYears} onChange={(e) => setHoldYears(Math.max(1, Math.min(30, Number(e.target.value) || 1)))} className="input-field w-24" min={1} max={30} />
+              <input type="number" value={holdYears || ""} onChange={(e) => setHoldYears(Math.max(1, Math.min(30, Number(e.target.value) || 1)))} className="input-field w-24" min={1} max={30} />
               <span className="text-sm text-gray-500">년</span>
               <div className="flex gap-1.5 flex-wrap flex-1">
                 {[2, 3, 5, 7, 10].map((y) => (
@@ -431,7 +431,7 @@ export default function ApartmentCalculator() {
                   <div className="space-y-1">
                     <label className="text-xs text-gray-500">전세금 (만원)</label>
                     <div className="flex items-center gap-2">
-                      <input type="number" value={jeonseDeposit} onChange={(e) => setCustomJeonseDeposit(Number(e.target.value) || 0)} className="input-field flex-1" step={1000} />
+                      <input type="number" value={jeonseDeposit || ""} onChange={(e) => setCustomJeonseDeposit(Number(e.target.value) || 0)} className="input-field flex-1" step={1000} />
                       <span className="text-xs text-gray-400 shrink-0">{formatManwon(jeonseDeposit)}</span>
                     </div>
                   </div>
@@ -441,11 +441,11 @@ export default function ApartmentCalculator() {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <label className="text-xs text-gray-500">보증금 (만원)</label>
-                    <input type="number" value={monthlyDeposit} onChange={(e) => setCustomMonthlyDeposit(Number(e.target.value) || 0)} className="input-field" step={1000} />
+                    <input type="number" value={monthlyDeposit || ""} onChange={(e) => setCustomMonthlyDeposit(Number(e.target.value) || 0)} className="input-field" step={1000} />
                   </div>
                   <div className="space-y-1">
                     <label className="text-xs text-gray-500">월세 (만원)</label>
-                    <input type="number" value={monthlyRent} onChange={(e) => setCustomMonthlyRent(Number(e.target.value) || 0)} className="input-field" step={10} />
+                    <input type="number" value={monthlyRent || ""} onChange={(e) => setCustomMonthlyRent(Number(e.target.value) || 0)} className="input-field" step={10} />
                   </div>
                 </div>
               )}

@@ -98,7 +98,8 @@ function calculate(preset: PetPreset, enabledExtras: string[], petType: PetType,
     cumNom += cost;
     cumReal += costReal;
 
-    const monthlyInv = cost / 12;
+    // 실제 지출(인플레 반영) 기준으로 투자 적립
+    const monthlyInv = costReal / 12;
     for (let m = 0; m < 12; m++) {
       sp500 = sp500 * (1 + mSP) + monthlyInv;
       nasdaq = nasdaq * (1 + mNQ) + monthlyInv;
@@ -135,7 +136,7 @@ export default function PetCalculator() {
 
   const chartData = result.yearly.map((y) => ({
     name: `${y.age}세`,
-    "누적 지출": y.cumNom,
+    "누적 지출": y.cumReal,
     "S&P500": y.sp500,
     "나스닥": y.nasdaq,
   }));
@@ -181,7 +182,7 @@ export default function PetCalculator() {
             <NumberInput label="월 기생충약" value={custom.monthlyParasite} onChange={(v) => setCustom({ ...custom, monthlyParasite: v })} step={0.5} />
             <NumberInput label="월 미용비" value={custom.monthlyGrooming} onChange={(v) => setCustom({ ...custom, monthlyGrooming: v })} />
             <NumberInput label="월 소모품" value={custom.monthlySupplies} onChange={(v) => setCustom({ ...custom, monthlySupplies: v })} />
-            <NumberInput label="펫보험 월" value={custom.monthlyInsurance} onChange={(v) => setCustom({ ...custom, monthlyInsurance: v })} step={0.5} />
+            {hasInsurance && <NumberInput label="펫보험 월" value={custom.monthlyInsurance} onChange={(v) => setCustom({ ...custom, monthlyInsurance: v })} step={0.5} />}
             <NumberInput label="8세+ 연간 병원비" value={custom.annualVetAfter8} onChange={(v) => setCustom({ ...custom, annualVetAfter8: v })} />
             <NumberInput label="장례비" value={custom.funeralCost} onChange={(v) => setCustom({ ...custom, funeralCost: v })} />
             </div>
@@ -219,10 +220,10 @@ export default function PetCalculator() {
             {PET_TABS.find((t) => t.key === petType)?.emoji} {PET_TABS.find((t) => t.key === petType)?.label}을(를) {result.lifespan}년간 키우면
           </p>
           <p className="text-3xl md:text-4xl font-bold text-amber-600 dark:text-amber-400">
-            매달 {monthlyAvg}만원
+            실제 총 {formatManwon(result.totalReal)}
           </p>
           <p className="text-sm text-gray-500">
-            = 매달 커피 {Math.round(monthlyAvg * 10000 / 5000)}잔 값 · {result.lifespan}년 총 {formatManwon(result.totalNom)}
+            월평균 {Math.round(result.totalReal / (result.lifespan * 12))}만원 · 물가상승 연 {inflationRate}% 반영
           </p>
         </div>
 
@@ -231,8 +232,8 @@ export default function PetCalculator() {
           <ResultCard
             icon={<PiggyBank className="w-5 h-5" />}
             label={`${result.lifespan}년간 실제 지출 총액`}
-            value={formatManwon(result.totalNom)}
-            sublabel={`물가상승 반영 시 ${formatManwon(result.totalReal)}`}
+            value={formatManwon(result.totalReal)}
+            sublabel={`물가 미반영(현재 가치) ${formatManwon(result.totalNom)}`}
             accent="red"
           />
           <ResultCard
@@ -309,8 +310,8 @@ export default function PetCalculator() {
             <div className="flex justify-between"><span>8세+ 연간 병원비</span><span>{custom.annualVetAfter8}만원/년</span></div>
             <div className="flex justify-between"><span>장례비</span><span>{custom.funeralCost}만원</span></div>
             <div className="border-t border-dashed border-gray-300 dark:border-gray-700 pt-2 mt-2">
-              <div className="flex justify-between font-bold"><span>총 지출 (명목)</span><span>{formatManwon(result.totalNom)}</span></div>
-              <div className="flex justify-between font-bold"><span>총 지출 (인플레 반영)</span><span>{formatManwon(result.totalReal)}</span></div>
+              <div className="flex justify-between font-bold"><span>실제 총 지출 (물가 반영)</span><span>{formatManwon(result.totalReal)}</span></div>
+              <div className="flex justify-between text-xs text-gray-500"><span>현재가치 기준</span><span>{formatManwon(result.totalNom)}</span></div>
             </div>
             <div className="border-t border-dashed border-gray-300 dark:border-gray-700 pt-2 mt-2">
               <div className="flex justify-between text-blue-600 dark:text-blue-400"><span>S&P500 기회비용</span><span>{formatManwon(result.sp500Final)}</span></div>
